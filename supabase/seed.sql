@@ -1,0 +1,36 @@
+-- Car Tracker — system part / service catalog (user_id is null = visible to everyone)
+insert into public.part_categories (code, name_ar, name_en, icon, default_interval_km, default_interval_months, sort_order, user_id)
+values
+  ('engine_oil',        'زيت المحرك',              'Engine Oil',            'oil',          10000,  6,  10, null),
+  ('oil_filter',        'فلتر الزيت',              'Oil Filter',            'filter',       10000,  6,  20, null),
+  ('air_filter',        'فلتر الهواء',             'Air Filter',            'air-filter',   20000, 12,  30, null),
+  ('ac_filter',         'فلتر المكيف',             'AC Cabin Filter',       'air-filter',   20000, 12,  40, null),
+  ('fuel_filter',       'فلتر البنزين',            'Fuel Filter',           'filter',       40000, 24,  50, null),
+  ('transmission_oil',  'زيت القير',               'Transmission Oil',      'cog',          60000, 36,  60, null),
+  ('brake_fluid',       'زيت الفرامل',             'Brake Fluid',           'water',        40000, 24,  70, null),
+  ('coolant',           'ماء الرديتر',             'Coolant',               'coolant',      60000, 36,  80, null),
+  ('spark_plugs',       'البواجي',                 'Spark Plugs',           'flash',        40000, null, 90, null),
+  ('battery',           'البطارية',                'Battery',               'battery',      null,  24, 100, null),
+  ('front_brake_pads',  'فحمات الفرامل الأمامية',   'Front Brake Pads',      'brake',        40000, null, 110, null),
+  ('rear_brake_pads',   'فحمات الفرامل الخلفية',    'Rear Brake Pads',       'brake',        60000, null, 120, null),
+  ('brake_discs',       'هوبات الفرامل',           'Brake Discs',           'brake',        80000, null, 130, null),
+  ('tires',             'الإطارات',                'Tires',                 'tire',         50000, 48, 140, null),
+  ('alignment',         'ترصيص وميزان',            'Alignment & Balancing', 'tire',         10000, 12, 150, null),
+  ('tire_rotation',     'تدوير الإطارات',           'Tire Rotation',         'tire',         10000, null, 160, null),
+  ('wipers',            'المساحات',                'Wiper Blades',          'wiper',        null,  12, 170, null),
+  ('shock_absorbers',   'المساعدات',               'Shock Absorbers',       'car-suspension', 80000, null, 180, null),
+  ('control_arms',      'الأذرعة',                 'Control Arms',          'car-suspension', null, null, 190, null),
+  ('drive_belt',        'السير',                   'Drive Belt',            'belt',         60000, null, 200, null),
+  ('timing_belt',       'سير التايمن',             'Timing Belt',           'belt',         100000, null, 210, null),
+  ('bulbs',             'اللمبات',                 'Light Bulbs',           'bulb',         null,  null, 220, null),
+  ('ac_service',        'صيانة المكيف / فريون',     'AC Service / Refrigerant', 'snow',     null,  24, 230, null),
+  ('engine_mount',      'كراسي المكينة',           'Engine Mounts',         'engine',       null,  null, 240, null),
+  ('general_service',   'فحص عام',                 'General Inspection',    'wrench',       10000, 12, 250, null),
+  ('other',             'أخرى',                    'Other',                 'wrench',       null,  null, 999, null)
+on conflict (code) where user_id is null do update set
+  name_ar = excluded.name_ar,
+  name_en = excluded.name_en,
+  icon = excluded.icon,
+  default_interval_km = excluded.default_interval_km,
+  default_interval_months = excluded.default_interval_months,
+  sort_order = excluded.sort_order;
