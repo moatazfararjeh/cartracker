@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, Switch, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
+import { AttachmentPicker } from '@/components/attachment-picker';
 import { EmptyText } from '@/components/blocks';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import {
   type ExpenseCategory,
   type RecordKind,
 } from '@/features/records/api';
+import { AttachmentUploadError, type PendingAttachment } from '@/features/records/attachments';
 import { FUEL_TYPES, type FuelType } from '@/features/vehicles/api';
 import { lookupName } from '@/features/vehicles/lookups';
 import { useTheme } from '@/hooks/use-theme';
@@ -57,6 +59,7 @@ export default function AddRecordScreen() {
   const [fullTank, setFullTank] = useState(true);
   const [nextDue, setNextDue] = useState('');
   const [notes, setNotes] = useState('');
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -122,6 +125,7 @@ export default function AddRecordScreen() {
     setFullTank(true);
     setNextDue('');
     setNotes('');
+    setAttachments([]);
   }
 
   function submit() {
@@ -153,7 +157,11 @@ export default function AddRecordScreen() {
         resetForm();
         setNotice(t('records.saved'));
       },
-      onError: (e: Error) => setError(recordErrorMessage(e, t)),
+      onError: (e: Error) => {
+        // The record itself was saved; clear the form so it isn't submitted twice.
+        if (e instanceof AttachmentUploadError) resetForm();
+        setError(recordErrorMessage(e, t));
+      },
     };
 
     if (kind === 'fuel') {
@@ -168,6 +176,7 @@ export default function AddRecordScreen() {
           station: trimmedPlace,
           is_full_tank: fullTank,
           notes: trimmedNotes,
+          attachments,
         },
         callbacks
       );
@@ -182,6 +191,7 @@ export default function AddRecordScreen() {
           category_id: partId!,
           cost: amount,
           next_due_km: nextDueKm,
+          attachments,
         },
         callbacks
       );
@@ -320,6 +330,8 @@ export default function AddRecordScreen() {
           onChangeText={setNotes}
           placeholder={t('records.notesPlaceholder')}
         />
+
+        {kind !== 'expense' && <AttachmentPicker value={attachments} onChange={setAttachments} />}
       </View>
 
       <Button style={styles.save} title={t('records.save')} loading={saving} onPress={submit} />

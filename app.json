@@ -35,7 +35,16 @@
       ],
       "expo-sqlite",
       "expo-localization",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to attach receipt photos to your car records.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to take photos of receipts for your car records.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-document-picker"
     ],
     "experiments": {
       "typedRoutes": true,

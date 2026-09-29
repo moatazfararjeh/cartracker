@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 
+import {
+  AttachmentUploadError,
+  uploadAttachments,
+  type PendingAttachment,
+} from '@/features/records/attachments';
 import { vehicleKeys, type FuelType } from '@/features/vehicles/api';
 import { supabase } from '@/lib/supabase';
 
@@ -275,16 +280,24 @@ export type NewFuelEntry = {
   station: string | null;
   is_full_tank: boolean;
   notes: string | null;
+  attachments: PendingAttachment[];
 };
 
 export function useCreateFuelEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (entry: NewFuelEntry) => {
-      const { error } = await supabase.from('fuel_entries').insert(entry);
+    mutationFn: async ({ attachments, ...entry }: NewFuelEntry) => {
+      const { data, error } = await supabase.from('fuel_entries').insert(entry).select('id').single();
       if (error) throw error;
+      await uploadAttachments({
+        vehicleId: entry.vehicle_id,
+        entityType: 'fuel',
+        entityId: data.id,
+        files: attachments,
+      });
     },
-    onSuccess: (_data, entry) => refreshVehicle(queryClient, entry.vehicle_id),
+    // Refresh even when only the attachment failed: the record itself was saved.
+    onSettled: (_data, _error, entry) => refreshVehicle(queryClient, entry.vehicle_id),
   });
 }
 
@@ -297,12 +310,13 @@ export type NewMaintenance = {
   category_id: string;
   cost: number;
   next_due_km: number | null;
+  attachments: PendingAttachment[];
 };
 
 export function useCreateMaintenance() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ category_id, cost, next_due_km, ...record }: NewMaintenance) => {
+    mutationFn: async ({ category_id, cost, next_due_km, attachments, ...record }: NewMaintenance) => {
       const { data, error } = await supabase
         .from('maintenance_records')
         .insert(record)
@@ -323,8 +337,15 @@ export function useCreateMaintenance() {
         await supabase.from('maintenance_records').delete().eq('id', data.id);
         throw item.error;
       }
+
+      await uploadAttachments({
+        vehicleId: record.vehicle_id,
+        entityType: 'maintenance',
+        entityId: data.id,
+        files: attachments,
+      });
     },
-    onSuccess: (_data, record) => refreshVehicle(queryClient, record.vehicle_id),
+    onSettled: (_data, _error, record) => refreshVehicle(queryClient, record.vehicle_id),
   });
 }
 
@@ -350,6 +371,9 @@ export function useCreateExpense() {
 
 /** Turns database errors (e.g. odometer validation) into messages for the user. */
 export function recordErrorMessage(error: Error, t: TFunction) {
+  if (error instanceof AttachmentUploadError) {
+    return t('attachments.uploadFailed', { message: error.message });
+  }
   const match = /ODOMETER_TOO_(LOW|HIGH):(\d+)/.exec(error.message);
   if (match) {
     return match[1] === 'LOW'

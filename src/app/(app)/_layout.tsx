@@ -22,6 +22,7 @@ export default function AppLayout() {
           options={{ presentation: 'modal', title: t('vehicles.addTitle') }}
         />
         <Stack.Screen name="settings" options={{ title: t('tabs.settings') }} />
+        <Stack.Screen name="documents/[type]" />
       </Stack>
     </ActiveVehicleProvider>
   );

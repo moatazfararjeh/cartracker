@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { ActivityRow, DueCard, EmptyText, Metric, MetricRow, SectionHead } from '@/components/blocks';
+import { DocumentCards } from '@/components/document-cards';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { currencyLabel, formatNumber } from '@/lib/format';
@@ -98,6 +99,9 @@ export default function HomeScreen() {
           <DueCard title={t('home.nothingDue')} detail={t('home.nothingDueDetail')} />
         )
       )}
+
+      <SectionHead title={t('documents.section')} />
+      <DocumentCards vehicleId={activeVehicle.id} />
 
       <SectionHead title={t('home.quickAdd')} />
       <View style={styles.quick}>
