@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { LanguageSwitch } from '@/components/language-switch';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { SelectField } from '@/components/ui/select-field';
+import { PRIVACY_URL, SUPPORT_URL } from '@/constants/site';
 import { ScreenMaxWidth } from '@/constants/theme';
 import { useCurrency, useUpdateProfile } from '@/features/profile/api';
 import { vehicleSubtitle, vehicleTitle } from '@/features/vehicles/display';
@@ -85,6 +86,31 @@ export default function SettingsScreen() {
           {updateProfile.error && (
             <ThemedText themeColor="danger">{updateProfile.error.message}</ThemedText>
           )}
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={[styles.heading, { color: theme.eyebrow }]}>
+            {t('settings.help')}
+          </ThemedText>
+          {[
+            { key: 'support', label: t('settings.support'), url: SUPPORT_URL },
+            { key: 'privacy', label: t('settings.privacy'), url: PRIVACY_URL },
+          ].map((link) => (
+            <Pressable
+              key={link.key}
+              accessibilityRole="link"
+              onPress={() => Linking.openURL(link.url)}
+              style={({ pressed }) => [
+                styles.card,
+                {
+                  backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
+                  borderColor: theme.border,
+                },
+              ]}>
+              <ThemedText style={[styles.cardTitle, styles.cardMain]}>{link.label}</ThemedText>
+              <ThemedText style={{ color: theme.accent }}>↗</ThemedText>
+            </Pressable>
+          ))}
         </View>
 
         <View style={styles.section}>

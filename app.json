@@ -8,9 +8,11 @@
     "scheme": "cartracker",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.ardalsharq.carcare",
       "icon": "./assets/images/icon.png"
     },
     "android": {
+      "package": "com.ardalsharq.carcare",
       "adaptiveIcon": {
         "backgroundColor": "#023A22",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -44,7 +46,8 @@
           "microphonePermission": false
         }
       ],
-      "expo-document-picker"
+      "expo-document-picker",
+      "./plugins/with-scene-lifecycle"
     ],
     "experiments": {
       "typedRoutes": true,

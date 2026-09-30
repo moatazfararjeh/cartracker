@@ -255,6 +255,9 @@ export const ar: Translations = {
     language: 'اللغة',
     account: 'الحساب',
     vehicles: 'السيارات',
+    help: 'المساعدة',
+    support: 'الدعم',
+    privacy: 'سياسة الخصوصية',
     currency: 'العملة',
   },
 };

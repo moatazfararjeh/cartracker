@@ -253,6 +253,9 @@ export const en = {
     language: 'Language',
     account: 'Account',
     vehicles: 'Vehicles',
+    help: 'Help',
+    support: 'Support',
+    privacy: 'Privacy policy',
     currency: 'Currency',
   },
 };
