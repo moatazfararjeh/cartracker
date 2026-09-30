@@ -1,56 +1,173 @@
-# Welcome to your Expo app 👋
+# Car Tracker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A bilingual (Arabic / English) car care app: track fuel fill-ups, maintenance, expenses and car documents, and get reminded before service or paperwork is due.
 
-## Get started
+Built with **Expo (SDK 57) + Expo Router**, backed by a **Supabase** database. Runs on iOS, Android and the web.
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- **Garage** – several vehicles per user; make, model, year and color picked from lookup lists (Arabic and English names), with an "Other" option for anything missing.
+- **Home** – current mileage, spending this month, the most urgent due item, car document status, quick add and recent activity.
+- **Add records**
+  - Maintenance: service / part from a catalog, workshop, cost, next-due km
+  - Fuel: liters, cost, station, fuel type, full-tank flag
+  - Expenses: insurance, registration, parking, fines, wash, tolls, …
+  - Optional receipt photos or PDFs on maintenance and fuel records
+- **History** – every record for the selected vehicle, newest first.
+- **Insights** – this year's spend, distance, spend per category and fuel economy (L/100 km).
+- **Car documents** – insurance card and vehicle license (Istimara) with number, insurer, expiry date and card photos. Expiry dates create reminders.
+- **Reminders** – worked out in the database from service intervals and document expiry dates.
+- **Arabic / English** with right-to-left layout, light and dark mode.
 
-2. Start the app
+## Tech stack
 
-   ```bash
-   npx expo start
-   ```
+| Area | Choice |
+| --- | --- |
+| App | Expo SDK 57, React Native 0.86, React 19, Expo Router (file-based routes, typed routes) |
+| Data | Supabase (Postgres, Auth, Storage) via `@supabase/supabase-js`, TanStack Query |
+| Session storage | `expo-sqlite/localStorage` on native, browser `localStorage` on web |
+| i18n | `i18next`, `react-i18next`, `expo-localization` |
+| Files | `expo-image-picker`, `expo-document-picker`, `expo-file-system` |
+| Web deploy | Static export (`expo export --platform web`) served by nginx in Docker |
 
-In the output, you'll find options to open the app in a
+## Getting started
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### 1. Prerequisites
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- Node.js 20 or newer and npm
+- A Supabase project (hosted or self-hosted)
+- Optional: [Watchman](https://facebook.github.io/watchman/) (`brew install watchman`). Without it, the dev server sometimes misses file changes.
 
-## Get a fresh project
-
-When you're ready, run:
+### 2. Install
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 3. Configure environment
 
-### Other setup steps
+Copy the example file and fill in values from **Supabase → Project Settings → API**:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+cp .env.example .env.local
+```
 
-## Learn more
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://your-supabase-host
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Use the **anon / publishable** key only, never the `service_role` key. `.env.local` is git-ignored.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 4. Set up the database
 
-## Join the community
+In the Supabase **SQL Editor**, run these files in order:
 
-Join our community of developers creating universal apps.
+| File | What it creates |
+| --- | --- |
+| `supabase/migrations/0001_init.sql` | Core tables (profiles, vehicles, odometer, fuel, maintenance, expenses, reminders, attachments), triggers, reporting views, row-level security, storage buckets |
+| `supabase/seed.sql` | Service / part catalog (26 items with default intervals) |
+| `supabase/migrations/0002_vehicle_lookups.sql` | Vehicle make / model lookups (34 makes, 238 models) |
+| `supabase/migrations/0003_vehicle_documents.sql` | Insurance card and vehicle license documents, expiry reminders |
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Every script can be run again safely.
+
+If the app reports `Could not find the table … in the schema cache` after a migration, reload the API schema:
+
+```sql
+notify pgrst, 'reload schema';
+```
+
+**Email confirmation.** Supabase requires new users to confirm their email by default. Without a mail (SMTP) server configured, confirmation emails are never sent. For development:
+
+- Self-hosted: set `ENABLE_EMAIL_AUTOCONFIRM=true` (or `GOTRUE_MAILER_AUTOCONFIRM=true` on the auth container) and restart Supabase.
+- Hosted: Authentication → Providers → Email → turn off "Confirm email".
+- Or confirm existing users manually:
+
+  ```sql
+  update auth.users set email_confirmed_at = now() where email_confirmed_at is null;
+  ```
+
+### 5. Run
+
+```bash
+npx expo start          # dev server (press i / a / w for iOS / Android / web)
+npm run web             # web only
+```
+
+Native modules (image picker, document picker, date picker, SQLite) need a [development build](https://docs.expo.dev/develop/development-builds/introduction/) rather than Expo Go:
+
+```bash
+npx expo run:ios
+npx expo run:android
+```
+
+If a code change doesn't appear, restart with a clean cache: `npx expo start --clear`.
+
+### Checks
+
+```bash
+npx tsc --noEmit   # typecheck
+npx expo lint      # lint
+```
+
+## Project structure
+
+```
+src/
+  app/                        Routes (Expo Router)
+    _layout.tsx               Providers, auth guard, splash screen
+    sign-in.tsx               Sign in / create account
+    (app)/                    Signed-in area
+      _layout.tsx             Stack + active vehicle provider
+      (tabs)/                 Home, History, Add, Insights
+      vehicles/new.tsx        Add vehicle (modal)
+      documents/[type].tsx    Insurance card / vehicle license
+      settings.tsx            Vehicles, language, sign out
+  components/                 Screen shell, header, cards, form controls (ui/)
+  features/                   Data access per domain (Supabase + TanStack Query)
+    vehicles/  records/  documents/  profile/
+  i18n/                       i18next setup and ar / en translations
+  lib/                        Supabase client, formatting, dates, numbers, file reading
+  providers/                  Session and active vehicle context
+supabase/
+  migrations/                 SQL migrations (run in order)
+  seed.sql                    Part catalog
+```
+
+Files ending in `.web.tsx` / `.web.ts` replace their native counterpart on the web (tab bar, date input, storage, file reading).
+
+## Deploying the web app (Coolify / Docker)
+
+The `Dockerfile` exports the app as a static single-page app and serves it with nginx on **port 80** (`nginx.conf` sends every route to `index.html`).
+
+In Coolify:
+
+1. **Build pack:** Dockerfile. **Ports Exposes:** `80`. The domain's port must also be `80`.
+2. **Environment variables:** add both of these with **Build time** on (they are compiled into the JavaScript bundle):
+   - `EXPO_PUBLIC_SUPABASE_URL`
+   - `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+3. Deploy. After changing a variable, **redeploy**. A restart does not rebuild the bundle.
+
+Build and run locally with Docker:
+
+```bash
+docker build \
+  --build-arg EXPO_PUBLIC_SUPABASE_URL=https://your-supabase-host \
+  --build-arg EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key \
+  -t car-tracker-web .
+docker run -p 8080:80 car-tracker-web
+```
+
+Native iOS / Android builds use [EAS Build](https://docs.expo.dev/build/introduction/): `npx eas-cli@latest build`.
+
+## Troubleshooting
+
+| Symptom | Cause / fix |
+| --- | --- |
+| `Bad Gateway` on the deployed site | The domain or exposed port is not `80` in Coolify. |
+| `name resolution failed` (503) when signing in | The Supabase auth container is down. Restart the Supabase service. |
+| `Email not confirmed` | Turn on auto-confirm or confirm the user in SQL (see step 4). |
+| `Invalid login credentials` | Wrong password. Reset it from Supabase → Authentication → Users. |
+| `Could not find the table … in the schema cache` | Migration not run yet, or run `notify pgrst, 'reload schema';`. |
+| Code changes not showing in the dev server | Install Watchman or restart with `npx expo start --clear`. |
