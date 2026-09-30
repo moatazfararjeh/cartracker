@@ -2,21 +2,22 @@
 
 A bilingual (Arabic / English) car care app: track fuel fill-ups, maintenance, expenses and car documents, and get reminded before service or paperwork is due.
 
-Built with **Expo (SDK 57) + Expo Router**, backed by a **Supabase** database. Runs on iOS, Android and the web.
+Built with **Expo (SDK 57) + Expo Router**, backed by a **Supabase** database. Targets iOS, Android and the web. The web version is deployed and in use; the native builds have not been tested yet (see [Native builds](#native-builds)).
 
 ## Features
 
-- **Garage** – several vehicles per user; make, model, year and color picked from lookup lists (Arabic and English names), with an "Other" option for anything missing.
+- **Garage** – several vehicles per user; make, model, year and color picked from lookup lists (Arabic and English names), with an "Other" option for anything missing. Vehicles can be edited or deleted from Settings.
 - **Home** – current mileage, spending this month, the most urgent due item, car document status, quick add and recent activity.
 - **Add records**
   - Maintenance: service / part from a catalog, workshop, cost, next-due km
   - Fuel: liters, cost, station, fuel type, full-tank flag
   - Expenses: insurance, registration, parking, fines, wash, tolls, …
-  - Optional receipt photos or PDFs on maintenance and fuel records
-- **History** – every record for the selected vehicle, newest first.
+  - Optional receipt photos or PDFs on any record
+- **History** – every record for the selected vehicle, newest first. Tap a record to edit it, view or remove its files, or delete it.
 - **Insights** – this year's spend, distance, spend per category and fuel economy (L/100 km).
 - **Car documents** – insurance card and vehicle license (Istimara) with number, insurer, expiry date and card photos. Expiry dates create reminders.
-- **Reminders** – worked out in the database from service intervals and document expiry dates.
+- **Reminders** – worked out in the database from service intervals and document expiry dates, and kept correct when services are edited or deleted. Home shows the most urgent one; tap it for the full list, where a reminder can be dismissed.
+- **Settings** – vehicles, language, currency (SAR, AED, KWD, QAR, BHD, OMR, JOD, EGP, USD, EUR), sign out.
 - **Arabic / English** with right-to-left layout, light and dark mode.
 
 ## Tech stack
@@ -69,6 +70,7 @@ In the Supabase **SQL Editor**, run these files in order:
 | `supabase/seed.sql` | Service / part catalog (26 items with default intervals) |
 | `supabase/migrations/0002_vehicle_lookups.sql` | Vehicle make / model lookups (34 makes, 238 models) |
 | `supabase/migrations/0003_vehicle_documents.sql` | Insurance card and vehicle license documents, expiry reminders |
+| `supabase/migrations/0004_reminder_recalc.sql` | Recalculates part reminders when maintenance is edited or deleted |
 
 Every script can be run again safely.
 
@@ -122,8 +124,11 @@ src/
       _layout.tsx             Stack + active vehicle provider
       (tabs)/                 Home, History, Add, Insights
       vehicles/new.tsx        Add vehicle (modal)
+      vehicles/[id].tsx       Edit / delete vehicle
+      records/[kind]/[id].tsx Edit / delete a record
       documents/[type].tsx    Insurance card / vehicle license
-      settings.tsx            Vehicles, language, sign out
+      reminders.tsx           All reminders
+      settings.tsx            Vehicles, language, currency, sign out
   components/                 Screen shell, header, cards, form controls (ui/)
   features/                   Data access per domain (Supabase + TanStack Query)
     vehicles/  records/  documents/  profile/
@@ -149,7 +154,7 @@ In Coolify:
    - `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 3. Deploy. After changing a variable, **redeploy**. A restart does not rebuild the bundle.
 
-Build and run locally with Docker:
+Build and run locally with Docker (not yet tried outside Coolify):
 
 ```bash
 docker build \
@@ -159,7 +164,12 @@ docker build \
 docker run -p 8080:80 car-tracker-web
 ```
 
-Native iOS / Android builds use [EAS Build](https://docs.expo.dev/build/introduction/): `npx eas-cli@latest build`.
+## Native builds
+
+The iOS and Android apps have not been built or tested yet. Native-only parts (tab bar icons, date picker, camera and file pickers, right-to-left switching) are unverified.
+
+- Local development build: `npx expo run:ios` / `npx expo run:android`
+- Cloud builds with [EAS Build](https://docs.expo.dev/build/introduction/) are not configured yet. Set them up once with `npx eas-cli@latest build:configure` (creates `eas.json` and links an Expo project), then `npx eas-cli@latest build`.
 
 ## Troubleshooting
 

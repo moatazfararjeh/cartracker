@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { RECEIPTS_BUCKET } from '@/features/records/attachments';
 import { supabase } from '@/lib/supabase';
 
 export const FUEL_TYPES = [
@@ -76,5 +77,48 @@ export function useCreateVehicle() {
       return data as unknown as Vehicle;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: vehicleKeys.all }),
+  });
+}
+
+export function useUpdateVehicle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...changes }: NewVehicle & { id: string }) => {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .update(changes)
+        .eq('id', id)
+        .select(VEHICLE_COLUMNS)
+        .single();
+      if (error) throw error;
+      return data as unknown as Vehicle;
+    },
+    onSuccess: (vehicle) => {
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['vehicle-data', vehicle.id] });
+    },
+  });
+}
+
+/** Deletes a vehicle with all its records (database cascade) and its stored files. */
+export function useDeleteVehicle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const files = await supabase.from('attachments').select('storage_path').eq('vehicle_id', id);
+      if (files.error) throw files.error;
+      const paths = files.data.map((f) => f.storage_path as string);
+      if (paths.length > 0) {
+        await supabase.storage.from(RECEIPTS_BUCKET).remove(paths);
+      }
+      const { error } = await supabase.from('vehicles').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, id) => {
+      queryClient.removeQueries({ queryKey: ['vehicle-data', id] });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
+    },
   });
 }

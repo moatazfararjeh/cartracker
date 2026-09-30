@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/providers/session-provider';
@@ -25,6 +25,20 @@ export function useProfile() {
       if (error) throw error;
       return data as Profile | null;
     },
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  return useMutation({
+    mutationFn: async (changes: Partial<Pick<Profile, 'full_name' | 'currency'>>) => {
+      const { error } = await supabase.from('profiles').update(changes).eq('id', userId!);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile', userId] }),
   });
 }
 

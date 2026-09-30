@@ -3,8 +3,11 @@ import type { TFunction } from 'i18next';
 
 import {
   AttachmentUploadError,
+  deleteAttachment,
+  listAttachments,
   uploadAttachments,
   type PendingAttachment,
+  type StoredAttachment,
 } from '@/features/records/attachments';
 import { vehicleKeys, type FuelType } from '@/features/vehicles/api';
 import { supabase } from '@/lib/supabase';
@@ -209,6 +212,19 @@ export function useUpcoming(vehicleId: string | undefined) {
   });
 }
 
+/** Hides a reminder until the part is serviced again or the document is renewed. */
+export function useDismissReminder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string; vehicleId: string }) => {
+      const { error } = await supabase.from('reminders').update({ is_active: false }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, { vehicleId }) =>
+      queryClient.invalidateQueries({ queryKey: recordKeys.upcoming(vehicleId) }),
+  });
+}
+
 export function useYearInsights(vehicleId: string | undefined, year: number) {
   return useQuery({
     queryKey: recordKeys.insights(vehicleId, year),
@@ -270,102 +286,261 @@ function refreshVehicle(queryClient: QueryClient, vehicleId: string) {
   queryClient.invalidateQueries({ queryKey: vehicleData(vehicleId) });
 }
 
-export type NewFuelEntry = {
+/** Form values shared by all record kinds; fields not used by a kind are null. */
+export type RecordValues = {
+  kind: RecordKind;
   vehicle_id: string;
-  filled_at: string;
-  odometer: number;
-  liters: number;
-  total_cost: number;
-  fuel_type: FuelType;
-  station: string | null;
-  is_full_tank: boolean;
+  date: string;
+  odometer: number | null;
+  amount: number;
+  /** Workshop (maintenance) or station (fuel). */
+  place: string | null;
   notes: string | null;
-  attachments: PendingAttachment[];
-};
-
-export function useCreateFuelEntry() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ attachments, ...entry }: NewFuelEntry) => {
-      const { data, error } = await supabase.from('fuel_entries').insert(entry).select('id').single();
-      if (error) throw error;
-      await uploadAttachments({
-        vehicleId: entry.vehicle_id,
-        entityType: 'fuel',
-        entityId: data.id,
-        files: attachments,
-      });
-    },
-    // Refresh even when only the attachment failed: the record itself was saved.
-    onSettled: (_data, _error, entry) => refreshVehicle(queryClient, entry.vehicle_id),
-  });
-}
-
-export type NewMaintenance = {
-  vehicle_id: string;
-  performed_at: string;
-  odometer: number;
-  workshop: string | null;
-  notes: string | null;
-  category_id: string;
-  cost: number;
+  category_id: string | null;
   next_due_km: number | null;
-  attachments: PendingAttachment[];
+  liters: number | null;
+  fuel_type: FuelType | null;
+  is_full_tank: boolean;
+  expense_category: ExpenseCategory | null;
 };
 
-export function useCreateMaintenance() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ category_id, cost, next_due_km, attachments, ...record }: NewMaintenance) => {
-      const { data, error } = await supabase
-        .from('maintenance_records')
-        .insert(record)
-        .select('id')
-        .single();
-      if (error) throw error;
+/** A saved record loaded for editing. */
+export type LoadedRecord = RecordValues & {
+  id: string;
+  /** The maintenance item edited by the form (records created in the app have one). */
+  item_id: string | null;
+};
 
-      const item = await supabase.from('maintenance_items').insert({
-        record_id: data.id,
-        vehicle_id: record.vehicle_id,
-        category_id,
-        quantity: 1,
-        unit_cost: cost,
-        next_due_km,
-      });
-      if (item.error) {
-        // Don't leave an empty record behind.
-        await supabase.from('maintenance_records').delete().eq('id', data.id);
-        throw item.error;
+const ENTITY_TABLE: Record<RecordKind, string> = {
+  fuel: 'fuel_entries',
+  maintenance: 'maintenance_records',
+  expense: 'expenses',
+};
+
+export function useRecord(kind: RecordKind, id: string | undefined) {
+  return useQuery({
+    queryKey: ['record', kind, id],
+    enabled: !!id,
+    queryFn: async (): Promise<LoadedRecord> => {
+      const base = { kind, id: id!, item_id: null, category_id: null, next_due_km: null, liters: null,
+        fuel_type: null, is_full_tank: true, expense_category: null, place: null } as const;
+
+      if (kind === 'fuel') {
+        const { data, error } = await supabase
+          .from('fuel_entries')
+          .select('vehicle_id, filled_at, odometer, liters, total_cost, fuel_type, station, is_full_tank, notes')
+          .eq('id', id!)
+          .single();
+        if (error) throw error;
+        return {
+          ...base,
+          vehicle_id: data.vehicle_id,
+          date: data.filled_at,
+          odometer: data.odometer,
+          amount: Number(data.total_cost),
+          liters: Number(data.liters),
+          fuel_type: data.fuel_type as FuelType | null,
+          is_full_tank: data.is_full_tank,
+          place: data.station,
+          notes: data.notes,
+        };
       }
 
-      await uploadAttachments({
-        vehicleId: record.vehicle_id,
-        entityType: 'maintenance',
-        entityId: data.id,
-        files: attachments,
-      });
+      if (kind === 'maintenance') {
+        const { data, error } = await supabase
+          .from('maintenance_records')
+          .select(
+            'vehicle_id, performed_at, odometer, workshop, total_cost, notes, maintenance_items(id, category_id, next_due_km, created_at)'
+          )
+          .eq('id', id!)
+          .single();
+        if (error) throw error;
+        const items = (data.maintenance_items as {
+          id: string;
+          category_id: string;
+          next_due_km: number | null;
+          created_at: string;
+        }[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
+        const item = items[0];
+        return {
+          ...base,
+          vehicle_id: data.vehicle_id,
+          date: data.performed_at,
+          odometer: data.odometer,
+          amount: Number(data.total_cost),
+          place: data.workshop,
+          notes: data.notes,
+          item_id: item?.id ?? null,
+          category_id: item?.category_id ?? null,
+          next_due_km: item?.next_due_km ?? null,
+        };
+      }
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('vehicle_id, category, spent_at, amount, odometer, notes')
+        .eq('id', id!)
+        .single();
+      if (error) throw error;
+      return {
+        ...base,
+        vehicle_id: data.vehicle_id,
+        date: data.spent_at,
+        odometer: data.odometer,
+        amount: Number(data.amount),
+        notes: data.notes,
+        expense_category: data.category as ExpenseCategory,
+      };
     },
-    onSettled: (_data, _error, record) => refreshVehicle(queryClient, record.vehicle_id),
   });
 }
 
-export type NewExpense = {
-  vehicle_id: string;
-  category: ExpenseCategory;
-  spent_at: string;
-  amount: number;
-  odometer: number | null;
-  notes: string | null;
+export type SaveRecordInput = {
+  /** Present when editing an existing record. */
+  id?: string;
+  item_id?: string | null;
+  values: RecordValues;
+  newFiles: PendingAttachment[];
+  removedFiles: StoredAttachment[];
 };
 
-export function useCreateExpense() {
+async function saveFuel(values: RecordValues, id?: string) {
+  const row = {
+    vehicle_id: values.vehicle_id,
+    filled_at: values.date,
+    odometer: values.odometer!,
+    liters: values.liters!,
+    total_cost: values.amount,
+    fuel_type: values.fuel_type,
+    station: values.place,
+    is_full_tank: values.is_full_tank,
+    notes: values.notes,
+  };
+  const query = id
+    ? supabase.from('fuel_entries').update(row).eq('id', id)
+    : supabase.from('fuel_entries').insert(row);
+  const { data, error } = await query.select('id').single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+async function saveMaintenance(values: RecordValues, id?: string, itemId?: string | null) {
+  const record = {
+    vehicle_id: values.vehicle_id,
+    performed_at: values.date,
+    odometer: values.odometer!,
+    workshop: values.place,
+    notes: values.notes,
+  };
+  const item = {
+    category_id: values.category_id!,
+    quantity: 1,
+    unit_cost: values.amount,
+    next_due_km: values.next_due_km,
+  };
+
+  if (id) {
+    const updated = await supabase.from('maintenance_records').update(record).eq('id', id);
+    if (updated.error) throw updated.error;
+    const itemResult = itemId
+      ? await supabase.from('maintenance_items').update(item).eq('id', itemId)
+      : await supabase
+          .from('maintenance_items')
+          .insert({ ...item, record_id: id, vehicle_id: values.vehicle_id });
+    if (itemResult.error) throw itemResult.error;
+    return id;
+  }
+
+  const { data, error } = await supabase.from('maintenance_records').insert(record).select('id').single();
+  if (error) throw error;
+  const inserted = await supabase
+    .from('maintenance_items')
+    .insert({ ...item, record_id: data.id, vehicle_id: values.vehicle_id });
+  if (inserted.error) {
+    // Don't leave an empty record behind.
+    await supabase.from('maintenance_records').delete().eq('id', data.id);
+    throw inserted.error;
+  }
+  return data.id as string;
+}
+
+async function saveExpense(values: RecordValues, id?: string) {
+  const row = {
+    vehicle_id: values.vehicle_id,
+    category: values.expense_category!,
+    spent_at: values.date,
+    amount: values.amount,
+    odometer: values.odometer,
+    notes: values.notes,
+  };
+  const query = id
+    ? supabase.from('expenses').update(row).eq('id', id)
+    : supabase.from('expenses').insert(row);
+  const { data, error } = await query.select('id').single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+/** Creates or updates a record of any kind, then applies attachment changes. */
+export function useSaveRecord() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (expense: NewExpense) => {
-      const { error } = await supabase.from('expenses').insert(expense);
+    mutationFn: async ({ id, item_id, values, newFiles, removedFiles }: SaveRecordInput) => {
+      const savedId =
+        values.kind === 'fuel'
+          ? await saveFuel(values, id)
+          : values.kind === 'maintenance'
+            ? await saveMaintenance(values, id, item_id)
+            : await saveExpense(values, id);
+
+      try {
+        for (const file of removedFiles) await deleteAttachment(file);
+      } catch (error) {
+        throw new AttachmentUploadError(error);
+      }
+      await uploadAttachments({
+        vehicleId: values.vehicle_id,
+        entityType: values.kind,
+        entityId: savedId,
+        files: newFiles,
+      });
+      return savedId;
+    },
+    // Refresh even when only the attachments failed: the record itself was saved.
+    onSettled: (savedId, _error, { values }) => {
+      refreshVehicle(queryClient, values.vehicle_id);
+      if (savedId) {
+        queryClient.invalidateQueries({ queryKey: ['record', values.kind, savedId] });
+        queryClient.invalidateQueries({ queryKey: ['attachments', values.kind, savedId] });
+      }
+    },
+  });
+}
+
+/** Deletes a record and its stored files. */
+export function useDeleteRecord() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kind, id }: { kind: RecordKind; id: string; vehicleId: string }) => {
+      const files = await listAttachments(kind, id);
+      for (const file of files) await deleteAttachment(file);
+      const { error } = await supabase.from(ENTITY_TABLE[kind]).delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: (_data, expense) => refreshVehicle(queryClient, expense.vehicle_id),
+    onSuccess: (_data, { kind, id, vehicleId }) => {
+      queryClient.removeQueries({ queryKey: ['record', kind, id] });
+      refreshVehicle(queryClient, vehicleId);
+    },
+  });
+}
+
+export function useRecordAttachments(kind: RecordKind, id: string | undefined) {
+  return useQuery({
+    queryKey: ['attachments', kind, id],
+    enabled: !!id,
+    // Signed URLs last an hour; refetch well before that.
+    staleTime: 30 * 60 * 1000,
+    queryFn: () => listAttachments(kind, id!),
   });
 }
 

@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
@@ -9,15 +8,9 @@ import { DocumentCards } from '@/components/document-cards';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { currencyLabel, formatNumber } from '@/lib/format';
-import { formatDate } from '@/lib/dates';
 import { useCurrency } from '@/features/profile/api';
-import {
-  useActivity,
-  useUpcoming,
-  useVehicleSummary,
-  type UpcomingItem,
-} from '@/features/records/api';
-import { lookupName } from '@/features/vehicles/lookups';
+import { useActivity, useUpcoming, useVehicleSummary } from '@/features/records/api';
+import { reminderText } from '@/features/records/reminder-text';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
 
 const RECENT_COUNT = 3;
@@ -93,10 +86,14 @@ export default function HomeScreen() {
       </MetricRow>
 
       {next ? (
-        <DueCard {...dueText(next, t, lang)} />
+        <DueCard {...reminderText(next, t, lang)} onPress={() => router.push('/reminders')} />
       ) : (
         upcoming.isSuccess && (
-          <DueCard title={t('home.nothingDue')} detail={t('home.nothingDueDetail')} />
+          <DueCard
+            title={t('home.nothingDue')}
+            detail={t('home.nothingDueDetail')}
+            onPress={() => router.push('/reminders')}
+          />
         )
       )}
 
@@ -135,36 +132,6 @@ export default function HomeScreen() {
       )}
     </AppScreen>
   );
-}
-
-function dueText(item: UpcomingItem, t: TFunction, lang: string) {
-  const name = item.expense_category
-    ? t(`expenseCategories.${item.expense_category}`)
-    : lookupName(item, lang);
-
-  const title =
-    item.status === 'overdue'
-      ? t('home.dueOverdue', { name })
-      : item.status === 'soon'
-        ? t('home.dueSoon', { name })
-        : t('home.dueOk', { name });
-
-  let detail = '';
-  if (item.due_km != null && item.km_left != null) {
-    const left =
-      item.km_left >= 0
-        ? t('home.kmLeft', { km: formatNumber(item.km_left, lang) })
-        : t('home.kmOver', { km: formatNumber(-item.km_left, lang) });
-    detail = `${t('home.dueAtKm', { km: formatNumber(item.due_km, lang) })} · ${left}`;
-  } else if (item.due_date && item.days_left != null) {
-    const left =
-      item.days_left >= 0
-        ? t('home.daysLeft', { count: item.days_left })
-        : t('home.daysOver', { count: -item.days_left });
-    detail = `${t('home.dueOnDate', { date: formatDate(item.due_date, lang, true) })} · ${left}`;
-  }
-
-  return { title, detail };
 }
 
 const styles = StyleSheet.create({

@@ -23,6 +23,9 @@ export default function AppLayout() {
         />
         <Stack.Screen name="settings" options={{ title: t('tabs.settings') }} />
         <Stack.Screen name="documents/[type]" />
+        <Stack.Screen name="records/[kind]/[id]" />
+        <Stack.Screen name="vehicles/[id]" />
+        <Stack.Screen name="reminders" options={{ title: t('reminders.title') }} />
       </Stack>
     </ActiveVehicleProvider>
   );

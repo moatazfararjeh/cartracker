@@ -1,7 +1,8 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import type { ActivityItem, ExpenseCategory } from '@/features/records/api';
@@ -44,10 +45,25 @@ export function MetricRow({ children }: { children: React.ReactNode }) {
   return <View style={styles.metrics}>{children}</View>;
 }
 
-export function DueCard({ title, detail }: { title: string; detail: string }) {
+export function DueCard({
+  title,
+  detail,
+  onPress,
+}: {
+  title: string;
+  detail: string;
+  onPress?: () => void;
+}) {
   const theme = useTheme();
   return (
-    <View style={[styles.due, { backgroundColor: theme.warningBackground }]}>
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.due,
+        { backgroundColor: theme.warningBackground, opacity: pressed ? 0.85 : 1 },
+      ]}>
       <MaterialCommunityIcons
         name="calendar-clock"
         size={18}
@@ -58,7 +74,15 @@ export function DueCard({ title, detail }: { title: string; detail: string }) {
         <ThemedText style={[styles.dueTitle, { color: theme.warningText }]}>{title}</ThemedText>
         <ThemedText style={[styles.dueDetail, { color: theme.warningText }]}>{detail}</ThemedText>
       </View>
-    </View>
+      {onPress && (
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={20}
+          color={theme.warningText}
+          style={styles.dueChevron}
+        />
+      )}
+    </Pressable>
   );
 }
 
@@ -147,7 +171,17 @@ export function ActivityRow({
     .join(' · ');
 
   return (
-    <View style={[styles.entry, !last && { borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityHint={t('records.tapToEdit')}
+      onPress={() =>
+        router.push({ pathname: '/records/[kind]/[id]', params: { kind: item.kind, id: item.id } })
+      }
+      style={({ pressed }) => [
+        styles.entry,
+        !last && { borderBottomColor: theme.border, borderBottomWidth: 1 },
+        pressed && { backgroundColor: theme.backgroundSelected },
+      ]}>
       <View style={[styles.rowIcon, { backgroundColor: theme.iconBackground }]}>
         <MaterialCommunityIcons name={activityIcon(item)} size={18} color={theme.icon} />
       </View>
@@ -160,7 +194,7 @@ export function ActivityRow({
         </ThemedText>
       </View>
       <ThemedText style={styles.entryCost}>{formatMoney(item.amount, currency, lang)}</ThemedText>
-    </View>
+    </Pressable>
   );
 }
 
@@ -227,6 +261,10 @@ const styles = StyleSheet.create({
   },
   dueIcon: {
     marginTop: 2,
+  },
+  dueChevron: {
+    alignSelf: 'center',
+    transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }],
   },
   dueTitle: {
     fontSize: 14,

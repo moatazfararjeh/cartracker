@@ -7,9 +7,23 @@ export function formatNumber(value: number, language: string, maximumFractionDig
   return new Intl.NumberFormat(numberLocale(language), { maximumFractionDigits }).format(value);
 }
 
-const CURRENCY_LABELS: Record<string, { ar: string; en: string }> = {
-  SAR: { ar: 'ر.س', en: 'SAR' },
-};
+/** Currencies offered in Settings, with the short label shown next to amounts. */
+export const CURRENCIES: { code: string; ar: string; en: string; nameAr: string; nameEn: string }[] = [
+  { code: 'SAR', ar: 'ر.س', en: 'SAR', nameAr: 'ريال سعودي', nameEn: 'Saudi riyal' },
+  { code: 'AED', ar: 'د.إ', en: 'AED', nameAr: 'درهم إماراتي', nameEn: 'UAE dirham' },
+  { code: 'KWD', ar: 'د.ك', en: 'KWD', nameAr: 'دينار كويتي', nameEn: 'Kuwaiti dinar' },
+  { code: 'QAR', ar: 'ر.ق', en: 'QAR', nameAr: 'ريال قطري', nameEn: 'Qatari riyal' },
+  { code: 'BHD', ar: 'د.ب', en: 'BHD', nameAr: 'دينار بحريني', nameEn: 'Bahraini dinar' },
+  { code: 'OMR', ar: 'ر.ع', en: 'OMR', nameAr: 'ريال عماني', nameEn: 'Omani rial' },
+  { code: 'JOD', ar: 'د.أ', en: 'JOD', nameAr: 'دينار أردني', nameEn: 'Jordanian dinar' },
+  { code: 'EGP', ar: 'ج.م', en: 'EGP', nameAr: 'جنيه مصري', nameEn: 'Egyptian pound' },
+  { code: 'USD', ar: '$', en: 'USD', nameAr: 'دولار أمريكي', nameEn: 'US dollar' },
+  { code: 'EUR', ar: '€', en: 'EUR', nameAr: 'يورو', nameEn: 'Euro' },
+];
+
+const CURRENCY_LABELS: Record<string, { ar: string; en: string }> = Object.fromEntries(
+  CURRENCIES.map((c) => [c.code, { ar: c.ar, en: c.en }])
+);
 
 export function currencyLabel(currency: string, language: string) {
   const labels = CURRENCY_LABELS[currency];
