@@ -1,4 +1,4 @@
-# Car Tracker
+# Car Care
 
 A bilingual (Arabic / English) car care app: track fuel fill-ups, maintenance, expenses and car documents, and get reminded before service or paperwork is due.
 

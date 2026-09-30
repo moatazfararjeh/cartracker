@@ -1,4 +1,4 @@
-# Car Tracker web build: export the Expo app as a static SPA, serve it with nginx.
+# Car Care web build: export the Expo app as a static SPA, serve it with nginx.
 
 # ---- build ----
 FROM node:22-alpine AS build

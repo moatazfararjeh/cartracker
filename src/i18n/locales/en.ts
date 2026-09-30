@@ -1,6 +1,6 @@
 export const en = {
   common: {
-    appName: 'Car Tracker',
+    appName: 'Car Care',
     loading: 'Loading…',
     error: 'Something went wrong',
     close: 'Close',

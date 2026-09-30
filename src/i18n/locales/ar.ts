@@ -2,7 +2,7 @@ import type { Translations } from './en';
 
 export const ar: Translations = {
   common: {
-    appName: 'متابعة السيارة',
+    appName: 'Car Care',
     loading: 'جارٍ التحميل…',
     error: 'حدث خطأ ما',
     close: 'إغلاق',
