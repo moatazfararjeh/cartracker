@@ -265,6 +265,42 @@ export function useYearInsights(vehicleId: string | undefined, year: number) {
   });
 }
 
+/**
+ * Aramco pump prices (SAR per liter) used when the vehicle has no earlier fill-up
+ * of that fuel type. Users can always overwrite the price in the form.
+ */
+export const DEFAULT_FUEL_PRICES: Partial<Record<FuelType, number>> = {
+  gasoline_91: 2.18,
+  gasoline_95: 2.33,
+  diesel: 1.66,
+};
+
+/** Price per liter of the vehicle's latest fill-up, per fuel type. */
+export function useLastFuelPrices(vehicleId: string | undefined) {
+  return useQuery({
+    queryKey: [...vehicleData(vehicleId), 'last-fuel-prices'],
+    enabled: !!vehicleId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fuel_entries')
+        .select('fuel_type, price_per_liter')
+        .eq('vehicle_id', vehicleId!)
+        .order('filled_at', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const prices: Partial<Record<FuelType, number>> = {};
+      for (const row of data) {
+        const type = row.fuel_type as FuelType | null;
+        if (type && prices[type] == null && row.price_per_liter != null) {
+          prices[type] = Number(row.price_per_liter);
+        }
+      }
+      return prices;
+    },
+  });
+}
+
 export function usePartCategories() {
   return useQuery({
     queryKey: ['part-categories'],

@@ -12,8 +12,10 @@ import { SelectField, type SelectOption } from '@/components/ui/select-field';
 import { TextField } from '@/components/ui/text-field';
 import { useCurrency } from '@/features/profile/api';
 import {
+  DEFAULT_FUEL_PRICES,
   EXPENSE_CATEGORIES,
   recordErrorMessage,
+  useLastFuelPrices,
   usePartCategories,
   useRecordAttachments,
   useSaveRecord,
@@ -42,6 +44,16 @@ export function isRecordKind(value: unknown): value is RecordKind {
 /** Number shown in an input: empty for null, no thousands separators. */
 function toInput(value: number | null | undefined) {
   return value == null ? '' : String(value);
+}
+
+const round = (value: number, digits: number) => Math.round(value * 10 ** digits) / 10 ** digits;
+
+/** Liters bought = total cost ÷ price per liter, rounded to the column's 2 decimals. */
+function litersFor(cost: number | null, price: number | null) {
+  if (cost == null || price == null || Number.isNaN(cost) || Number.isNaN(price) || price <= 0) {
+    return null;
+  }
+  return round(cost / price, 2);
 }
 
 type RecordFormProps = {
@@ -74,7 +86,11 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
   const [odometer, setOdometer] = useState(toInput(record?.odometer));
   const [cost, setCost] = useState(toInput(record?.amount));
   const [place, setPlace] = useState(record?.place ?? '');
-  const [liters, setLiters] = useState(toInput(record?.liters));
+  // Price per liter: typed by the user, or suggested until they change it.
+  const [price, setPrice] = useState(
+    record?.liters ? toInput(round(record.amount / record.liters, 3)) : ''
+  );
+  const [priceTouched, setPriceTouched] = useState(!!record);
   const [fullTank, setFullTank] = useState(record?.is_full_tank ?? true);
   const [nextDue, setNextDue] = useState(toInput(record?.next_due_km));
   const [notes, setNotes] = useState(record?.notes ?? '');
@@ -85,6 +101,11 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
 
   const currentKm = vehicle.current_odometer;
   const selectedFuelType = fuelType ?? vehicle.fuel_type;
+  const lastPrices = useLastFuelPrices(kind === 'fuel' ? vehicle.id : undefined);
+  const suggestedPrice =
+    lastPrices.data?.[selectedFuelType] ?? DEFAULT_FUEL_PRICES[selectedFuelType] ?? null;
+  const priceInput = priceTouched ? price : toInput(suggestedPrice);
+  const computedLiters = litersFor(parseNumber(cost), parseNumber(priceInput));
   const keptFiles = (storedFiles.data ?? []).filter((f) => !removedFiles.some((r) => r.id === f.id));
 
   const kindOptions = RECORD_KINDS.map((value) => ({ value, label: t(`records.${value}`) }));
@@ -115,7 +136,8 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
     setOdometer('');
     setCost('');
     setPlace('');
-    setLiters('');
+    setPrice('');
+    setPriceTouched(false);
     setFullTank(true);
     setNextDue('');
     setNotes('');
@@ -127,7 +149,8 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
     setNotice(null);
     const km = parseNumber(odometer);
     const amount = parseNumber(cost);
-    const litersValue = parseNumber(liters);
+    const priceValue = parseNumber(priceInput);
+    const litersValue = litersFor(amount, priceValue);
     const nextDueKm = parseNumber(nextDue);
     const kmRequired = kind !== 'expense';
 
@@ -137,7 +160,10 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
       return setError(t('records.invalidOdometer'));
     }
     if (amount === null || Number.isNaN(amount)) return setError(t('records.invalidCost'));
-    if (kind === 'fuel' && (litersValue === null || Number.isNaN(litersValue) || litersValue <= 0)) {
+    if (kind === 'fuel' && (priceValue === null || Number.isNaN(priceValue) || priceValue <= 0)) {
+      return setError(t('records.invalidPrice'));
+    }
+    if (kind === 'fuel' && (litersValue === null || litersValue <= 0)) {
       return setError(t('records.invalidLiters'));
     }
     if (nextDueKm !== null && !Number.isInteger(nextDueKm)) {
@@ -259,11 +285,14 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
           <View style={styles.cell}>
             {kind === 'fuel' ? (
               <TextField
-                label={t('records.liters')}
-                value={liters}
-                onChangeText={setLiters}
+                label={t('records.pricePerLiter', { currency: currencyLabel(currency, lang) })}
+                value={priceInput}
+                onChangeText={(value) => {
+                  setPriceTouched(true);
+                  setPrice(value);
+                }}
                 keyboardType="decimal-pad"
-                placeholder="45"
+                placeholder="2.18"
               />
             ) : kind === 'maintenance' ? (
               <TextField
@@ -278,12 +307,26 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
 
         {kind === 'fuel' && (
           <>
-            <TextField
-              label={t('records.station')}
-              value={place}
-              onChangeText={setPlace}
-              placeholder={t('records.optional')}
-            />
+            <View style={styles.row}>
+              <View style={styles.cell}>
+                <TextField
+                  label={t('records.litersCalculated')}
+                  value={computedLiters != null ? formatNumber(computedLiters, lang, 2) : ''}
+                  placeholder="—"
+                  editable={false}
+                  accessibilityHint={t('records.litersHint')}
+                  style={{ backgroundColor: theme.backgroundSelected, color: theme.accent }}
+                />
+              </View>
+              <View style={styles.cell}>
+                <TextField
+                  label={t('records.station')}
+                  value={place}
+                  onChangeText={setPlace}
+                  placeholder={t('records.optional')}
+                />
+              </View>
+            </View>
             <View style={styles.switchRow}>
               <ThemedText style={styles.switchLabel}>{t('records.fullTank')}</ThemedText>
               <Switch
