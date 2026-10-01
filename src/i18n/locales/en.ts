@@ -256,6 +256,12 @@ export const en = {
     help: 'Help',
     support: 'Support',
     privacy: 'Privacy policy',
+    deleteAccount: 'Delete account',
+    deleteAccountHint: 'Permanently deletes your account, vehicles, records, documents and files.',
+    deleteAccountTitle: 'Delete your account?',
+    deleteAccountMessage: 'Your account and all its vehicles, records, documents and files will be permanently deleted. This cannot be undone.',
+    deleteAccountConfirm: 'Delete permanently',
+    deleteAccountFailed: 'Your account could not be deleted ({{message}}). Please try again.',
     currency: 'Currency',
   },
 };

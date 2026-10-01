@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { SelectField } from '@/components/ui/select-field';
 import { PRIVACY_URL, SUPPORT_URL } from '@/constants/site';
 import { ScreenMaxWidth } from '@/constants/theme';
-import { useCurrency, useUpdateProfile } from '@/features/profile/api';
+import { useCurrency, useDeleteAccount, useUpdateProfile } from '@/features/profile/api';
 import { vehicleSubtitle, vehicleTitle } from '@/features/vehicles/display';
 import { useTheme } from '@/hooks/use-theme';
+import { confirm } from '@/lib/confirm';
 import { CURRENCIES } from '@/lib/format';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
 import { useSession } from '@/providers/session-provider';
@@ -23,6 +24,19 @@ export default function SettingsScreen() {
   const { vehicles } = useActiveVehicle();
   const currency = useCurrency();
   const updateProfile = useUpdateProfile();
+  const deleteAccount = useDeleteAccount();
+
+  async function onDeleteAccount() {
+    const ok = await confirm({
+      title: t('settings.deleteAccountTitle'),
+      message: t('settings.deleteAccountMessage'),
+      confirmText: t('settings.deleteAccountConfirm'),
+      cancelText: t('common.cancel'),
+      destructive: true,
+    });
+    // After deletion the session ends and the auth guard returns to sign-in.
+    if (ok) deleteAccount.mutate();
+  }
   const isArabic = i18n.language === 'ar';
   const currencyOptions = CURRENCIES.map((c) => ({
     value: c.code,
@@ -118,7 +132,21 @@ export default function SettingsScreen() {
             {t('settings.account')}
           </ThemedText>
           <ThemedText style={styles.cardTitle}>{session?.user.email}</ThemedText>
-          <Button title={t('auth.signOut')} variant="danger" onPress={signOut} />
+          <Button title={t('auth.signOut')} variant="secondary" onPress={signOut} />
+          <Button
+            title={t('settings.deleteAccount')}
+            variant="danger"
+            loading={deleteAccount.isPending}
+            onPress={onDeleteAccount}
+          />
+          <ThemedText style={styles.cardSub} themeColor="textSecondary">
+            {t('settings.deleteAccountHint')}
+          </ThemedText>
+          {deleteAccount.error && (
+            <ThemedText themeColor="danger">
+              {t('settings.deleteAccountFailed', { message: deleteAccount.error.message })}
+            </ThemedText>
+          )}
         </View>
       </ScrollView>
     </ThemedView>

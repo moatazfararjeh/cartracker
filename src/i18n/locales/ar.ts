@@ -258,6 +258,12 @@ export const ar: Translations = {
     help: 'المساعدة',
     support: 'الدعم',
     privacy: 'سياسة الخصوصية',
+    deleteAccount: 'حذف الحساب',
+    deleteAccountHint: 'يحذف حسابك وسياراتك وسجلاتك ووثائقك وملفاتك نهائياً.',
+    deleteAccountTitle: 'حذف حسابك؟',
+    deleteAccountMessage: 'سيتم حذف حسابك وجميع سياراته وسجلاته ووثائقه وملفاته نهائياً. لا يمكن التراجع عن ذلك.',
+    deleteAccountConfirm: 'حذف نهائي',
+    deleteAccountFailed: 'تعذّر حذف حسابك ({{message}}). حاول مرة أخرى.',
     currency: 'العملة',
   },
 };

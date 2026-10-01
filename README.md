@@ -17,7 +17,7 @@ Built with **Expo (SDK 57) + Expo Router**, backed by a **Supabase** database. T
 - **Insights** – this year's spend, distance, spend per category and fuel economy (L/100 km).
 - **Car documents** – insurance card and vehicle license (Istimara) with number, insurer, expiry date and card photos. Expiry dates create reminders.
 - **Reminders** – worked out in the database from service intervals and document expiry dates, and kept correct when services are edited or deleted. Home shows the most urgent one; tap it for the full list, where a reminder can be dismissed.
-- **Settings** – vehicles, language, currency (SAR, AED, KWD, QAR, BHD, OMR, JOD, EGP, USD, EUR), sign out.
+- **Settings** – vehicles, language, currency (SAR, AED, KWD, QAR, BHD, OMR, JOD, EGP, USD, EUR), support and privacy links, sign out, and permanent account deletion.
 - **Arabic / English** with right-to-left layout, light and dark mode.
 
 ## Tech stack
@@ -71,6 +71,7 @@ In the Supabase **SQL Editor**, run these files in order:
 | `supabase/migrations/0002_vehicle_lookups.sql` | Vehicle make / model lookups (34 makes, 238 models) |
 | `supabase/migrations/0003_vehicle_documents.sql` | Insurance card and vehicle license documents, expiry reminders |
 | `supabase/migrations/0004_reminder_recalc.sql` | Recalculates part reminders when maintenance is edited or deleted |
+| `supabase/migrations/0005_delete_account.sql` | `delete_my_account()` for in-app account deletion |
 
 Every script can be run again safely.
 

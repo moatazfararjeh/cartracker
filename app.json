@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.ardalsharq.carcare",
+      "buildNumber": "2",
       "icon": "./assets/images/icon.png"
     },
     "android": {
