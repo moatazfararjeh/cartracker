@@ -12,8 +12,11 @@ export function vehicleTitle(vehicle: Vehicle, language: string) {
   return vehicle.year ? `${name} · ${vehicle.year}` : name;
 }
 
+/** First-strong isolate: keeps an Arabic plate from reordering the Latin text around it. */
+const isolate = (text: string) => `⁨${text}⁩`;
+
 /** e.g. "ABC 1234 · 82,450 km". */
 export function vehicleSubtitle(vehicle: Vehicle, t: TFunction, language: string) {
   const km = t('vehicles.km', { value: formatNumber(vehicle.current_odometer, language) });
-  return vehicle.plate ? `${vehicle.plate} · ${km}` : km;
+  return vehicle.plate ? `${isolate(vehicle.plate)} · ${km}` : km;
 }

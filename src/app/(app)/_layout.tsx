@@ -14,6 +14,8 @@ export default function AppLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: theme.header },
           headerTintColor: theme.text,
+          // Back button shows only the arrow; otherwise it reads the group name "(tabs)".
+          headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: theme.background },
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

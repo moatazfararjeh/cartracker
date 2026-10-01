@@ -1,10 +1,14 @@
-// Latin digits in both languages so figures match what users type.
-function numberLocale(language: string) {
-  return language === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US';
-}
+// Latin digits in both languages so figures match what users type and the dates / plates around
+// them. Always en-US: Hermes ignores the "-u-nu-latn" extension and would print Arabic-Indic digits.
+const numberFormats = new Map<number, Intl.NumberFormat>();
 
-export function formatNumber(value: number, language: string, maximumFractionDigits = 0) {
-  return new Intl.NumberFormat(numberLocale(language), { maximumFractionDigits }).format(value);
+export function formatNumber(value: number, _language: string, maximumFractionDigits = 0) {
+  let format = numberFormats.get(maximumFractionDigits);
+  if (!format) {
+    format = new Intl.NumberFormat('en-US', { maximumFractionDigits });
+    numberFormats.set(maximumFractionDigits, format);
+  }
+  return format.format(value);
 }
 
 /** Currencies offered in Settings, with the short label shown next to amounts. */
