@@ -13,10 +13,14 @@ export function vehicleTitle(vehicle: Vehicle, language: string) {
 }
 
 /** First-strong isolate: keeps an Arabic plate from reordering the Latin text around it. */
-const isolate = (text: string) => `⁨${text}⁩`;
+const isolate = (text: string) => `\u2068${text}\u2069`;
 
 /** e.g. "ABC 1234 · 82,450 km". */
 export function vehicleSubtitle(vehicle: Vehicle, t: TFunction, language: string) {
   const km = t('vehicles.km', { value: formatNumber(vehicle.current_odometer, language) });
-  return vehicle.plate ? `${isolate(vehicle.plate)} · ${km}` : km;
+  if (!vehicle.plate) return km;
+  // Lead with the UI direction mark: browsers guess a paragraph's direction from its first
+  // strong character, which would otherwise be the Arabic plate.
+  const mark = language === 'ar' ? '\u200F' : '\u200E';
+  return `${mark}${isolate(vehicle.plate)} · ${km}`;
 }

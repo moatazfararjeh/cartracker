@@ -12,9 +12,9 @@ import { ScreenMaxWidth } from '@/constants/theme';
 import { useCurrency, useDeleteAccount, useUpdateProfile } from '@/features/profile/api';
 import { vehicleSubtitle, vehicleTitle } from '@/features/vehicles/display';
 import { useTheme } from '@/hooks/use-theme';
-import { confirm } from '@/lib/confirm';
 import { CURRENCIES } from '@/lib/format';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
+import { useConfirm } from '@/providers/confirm-provider';
 import { useSession } from '@/providers/session-provider';
 
 export default function SettingsScreen() {
@@ -25,6 +25,7 @@ export default function SettingsScreen() {
   const currency = useCurrency();
   const updateProfile = useUpdateProfile();
   const deleteAccount = useDeleteAccount();
+  const confirm = useConfirm();
 
   async function onDeleteAccount() {
     const ok = await confirm({

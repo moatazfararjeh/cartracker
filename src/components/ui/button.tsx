@@ -49,5 +49,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: 600,
+    textAlign: 'center',
   },
 });

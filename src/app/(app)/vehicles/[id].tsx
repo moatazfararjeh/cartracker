@@ -7,14 +7,15 @@ import { Button } from '@/components/ui/button';
 import { VehicleForm } from '@/components/vehicle-form';
 import { useDeleteVehicle } from '@/features/vehicles/api';
 import { vehicleTitle } from '@/features/vehicles/display';
-import { confirm } from '@/lib/confirm';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
+import { useConfirm } from '@/providers/confirm-provider';
 
 export default function EditVehicleScreen() {
   const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { vehicles } = useActiveVehicle();
   const remove = useDeleteVehicle();
+  const confirm = useConfirm();
   const vehicle = vehicles.find((v) => v.id === id);
 
   async function deleteVehicle() {

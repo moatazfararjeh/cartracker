@@ -8,8 +8,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { ScreenMaxWidth } from '@/constants/theme';
 import { recordErrorMessage, useDeleteRecord, useRecord } from '@/features/records/api';
-import { confirm } from '@/lib/confirm';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
+import { useConfirm } from '@/providers/confirm-provider';
 
 export default function EditRecordScreen() {
   const { t } = useTranslation();
@@ -18,6 +18,7 @@ export default function EditRecordScreen() {
   const record = useRecord(kind ?? 'fuel', kind ? params.id : undefined);
   const { vehicles } = useActiveVehicle();
   const remove = useDeleteRecord();
+  const confirm = useConfirm();
 
   const vehicle = vehicles.find((v) => v.id === record.data?.vehicle_id);
   const title = kind ? t(`records.edit.${kind}`) : '';

@@ -14,8 +14,8 @@ import {
 import { reminderText } from '@/features/records/reminder-text';
 import { vehicleTitle } from '@/features/vehicles/display';
 import { useTheme } from '@/hooks/use-theme';
-import { confirm } from '@/lib/confirm';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
+import { useConfirm } from '@/providers/confirm-provider';
 
 function reminderIcon(item: UpcomingItem): IconName {
   if (item.expense_category === 'insurance') return 'shield-car';
@@ -54,6 +54,7 @@ function ReminderRow({ item, vehicleId }: { item: UpcomingItem; vehicleId: strin
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const dismiss = useDismissReminder();
+  const confirm = useConfirm();
   const { title, detail } = reminderText(item, t, i18n.language);
 
   const statusColor =

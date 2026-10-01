@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from 'react-native';
 
 import { isRTL, type Language } from '@/i18n';
+import { ConfirmProvider } from '@/providers/confirm-provider';
 import { SessionProvider, useSession } from '@/providers/session-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -25,8 +26,10 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <QueryClientProvider client={queryClient}>
           <SessionProvider>
-            <SplashScreenController />
-            <RootNavigator />
+            <ConfirmProvider>
+              <SplashScreenController />
+              <RootNavigator />
+            </ConfirmProvider>
           </SessionProvider>
         </QueryClientProvider>
       </ThemeProvider>
