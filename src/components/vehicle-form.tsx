@@ -15,6 +15,7 @@ import {
   type FuelType,
   type Vehicle,
 } from '@/features/vehicles/api';
+import { useCurrency } from '@/features/profile/api';
 import {
   lookupName,
   useVehicleMakes,
@@ -23,6 +24,7 @@ import {
   vehicleYears,
   type VehicleColorCode,
 } from '@/features/vehicles/lookups';
+import { currencyLabel } from '@/lib/format';
 import { parseNumber } from '@/lib/numbers';
 
 /** Picker value meaning "not in the list, type it". */
@@ -62,6 +64,10 @@ export function VehicleForm({ vehicle, onSaved }: VehicleFormProps) {
   const [tankCapacity, setTankCapacity] = useState(
     vehicle?.tank_capacity != null ? String(vehicle.tank_capacity) : ''
   );
+  const [budget, setBudget] = useState(
+    vehicle?.monthly_budget != null ? String(vehicle.monthly_budget) : ''
+  );
+  const currency = useCurrency();
   const [error, setError] = useState<string | null>(null);
 
   const isOtherMake = makeCode === OTHER;
@@ -121,9 +127,12 @@ export function VehicleForm({ vehicle, onSaved }: VehicleFormProps) {
 
     const parsedOdometer = parseNumber(odometer);
     const parsedTank = parseNumber(tankCapacity);
+    const parsedBudget = parseNumber(budget);
     if (
       (parsedOdometer !== null && !Number.isInteger(parsedOdometer)) ||
-      Number.isNaN(parsedTank)
+      Number.isNaN(parsedTank) ||
+      Number.isNaN(parsedBudget) ||
+      parsedBudget === 0
     ) {
       setError(t('vehicles.invalidNumber'));
       return;
@@ -141,6 +150,7 @@ export function VehicleForm({ vehicle, onSaved }: VehicleFormProps) {
       fuel_type: fuelType,
       initial_odometer: parsedOdometer ?? 0,
       tank_capacity: parsedTank,
+      monthly_budget: parsedBudget,
     };
     const callbacks = {
       onSuccess: onSaved,
@@ -257,6 +267,14 @@ export function VehicleForm({ vehicle, onSaved }: VehicleFormProps) {
           />
         </View>
       </View>
+
+      <TextField
+        label={t('budget.field', { currency: currencyLabel(currency, i18n.language) })}
+        value={budget}
+        onChangeText={setBudget}
+        keyboardType="decimal-pad"
+        placeholder={t('records.optional')}
+      />
 
       {(error || makes.isError) && (
         <ThemedText themeColor="danger">{error ?? t('common.error')}</ThemedText>

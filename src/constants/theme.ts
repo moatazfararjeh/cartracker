@@ -35,6 +35,8 @@ export const Colors = {
     chipSelectedBorder: '#8EC8A8',
     track: '#E0EAE5',
     trackFill: '#218466',
+    /** Data marks in charts (validated: lightness band, chroma, 3:1 vs card surface). */
+    chart: '#218466',
     noteBackground: '#E6F3EB',
     noteText: '#315944',
     tabInactive: '#71877E',
@@ -65,6 +67,7 @@ export const Colors = {
     chipSelectedBorder: '#679D7A',
     track: '#35463E',
     trackFill: '#87D2AC',
+    chart: '#34A874',
     noteBackground: '#2B4538',
     noteText: '#C3E8CF',
     tabInactive: '#9DB5AA',

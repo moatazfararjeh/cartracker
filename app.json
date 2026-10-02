@@ -48,7 +48,8 @@
         }
       ],
       "expo-document-picker",
-      "./plugins/with-scene-lifecycle"
+      "./plugins/with-scene-lifecycle",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

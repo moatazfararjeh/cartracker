@@ -1,8 +1,9 @@
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
-import { BarLine, EmptyText, Metric, MetricRow, Note, SectionHead } from '@/components/blocks';
+import { BarLine, EmptyText, Metric, MetricRow, Note, SectionHead, ToolLink } from '@/components/blocks';
 import { ThemedText } from '@/components/themed-text';
 import { useCurrency } from '@/features/profile/api';
 import { useVehicleSummary, useYearInsights, type RecordKind } from '@/features/records/api';
@@ -70,6 +71,30 @@ export default function InsightsScreen() {
           </Note>
         </>
       )}
+
+      {activeVehicle && (
+        <View style={styles.tools}>
+          <SectionHead title={t('tools.title')} />
+          <ToolLink
+            icon="gas-station"
+            title={t('tools.fuel')}
+            hint={t('tools.fuelHint')}
+            onPress={() => router.push('/fuel')}
+          />
+          <ToolLink
+            icon="file-export-outline"
+            title={t('tools.export')}
+            hint={t('tools.exportHint')}
+            onPress={() => router.push('/export')}
+          />
+          <ToolLink
+            icon="compare-horizontal"
+            title={t('tools.compare')}
+            hint={t('tools.compareHint')}
+            onPress={() => router.push('/compare')}
+          />
+        </View>
+      )}
     </AppScreen>
   );
 }
@@ -78,5 +103,8 @@ const styles = StyleSheet.create({
   bars: {
     marginTop: -11,
     marginBottom: 8,
+  },
+  tools: {
+    marginTop: 24,
   },
 });

@@ -32,16 +32,18 @@ export type Vehicle = {
   color: string | null;
   fuel_type: FuelType;
   tank_capacity: number | null;
+  /** Optional spending limit per calendar month. */
+  monthly_budget: number | null;
   initial_odometer: number;
   current_odometer: number;
   created_at: string;
 };
 
 export type NewVehicle = Pick<Vehicle, 'make' | 'model' | 'fuel_type' | 'initial_odometer'> &
-  Partial<Pick<Vehicle, 'make_code' | 'model_id' | 'year' | 'plate' | 'color' | 'tank_capacity'>>;
+  Partial<Pick<Vehicle, 'make_code' | 'model_id' | 'year' | 'plate' | 'color' | 'tank_capacity' | 'monthly_budget'>>;
 
 const VEHICLE_COLUMNS =
-  'id, make, model, make_code, model_id, year, plate, color, fuel_type, tank_capacity, initial_odometer, current_odometer, created_at, ' +
+  'id, make, model, make_code, model_id, year, plate, color, fuel_type, tank_capacity, monthly_budget, initial_odometer, current_odometer, created_at, ' +
   'make_ref:vehicle_makes(name_en, name_ar), model_ref:vehicle_models(name_en, name_ar)';
 
 export const vehicleKeys = {

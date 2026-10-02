@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { ActivityRow, DueCard, EmptyText, Metric, MetricRow, SectionHead } from '@/components/blocks';
+import { BudgetCard } from '@/components/budget-card';
 import { DocumentCards } from '@/components/document-cards';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -84,6 +85,12 @@ export default function HomeScreen() {
           unit={currencyLabel(currency, lang)}
         />
       </MetricRow>
+
+      <BudgetCard
+        vehicle={activeVehicle}
+        spentThisMonth={summary.data?.cost_this_month ?? 0}
+        currency={currency}
+      />
 
       {next ? (
         <DueCard {...reminderText(next, t, lang)} onPress={() => router.push('/reminders')} />

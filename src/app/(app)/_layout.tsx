@@ -28,6 +28,9 @@ export default function AppLayout() {
         <Stack.Screen name="records/[kind]/[id]" />
         <Stack.Screen name="vehicles/[id]" />
         <Stack.Screen name="reminders" options={{ title: t('reminders.title') }} />
+        <Stack.Screen name="fuel" options={{ title: t('fuel.title') }} />
+        <Stack.Screen name="export" options={{ title: t('export.title') }} />
+        <Stack.Screen name="compare" options={{ title: t('compare.title') }} />
       </Stack>
     </ActiveVehicleProvider>
   );

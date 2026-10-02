@@ -198,6 +198,49 @@ export function ActivityRow({
   );
 }
 
+/** Tappable row linking to a tool screen: icon, title, hint, chevron. */
+export function ToolLink({
+  icon,
+  title,
+  hint,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  hint: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tool,
+        {
+          backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
+          borderColor: theme.border,
+        },
+      ]}>
+      <View style={[styles.rowIcon, { backgroundColor: theme.iconBackground }]}>
+        <MaterialCommunityIcons name={icon} size={18} color={theme.icon} />
+      </View>
+      <View style={styles.entryMain}>
+        <ThemedText style={styles.entryTitle}>{title}</ThemedText>
+        <ThemedText style={styles.entrySub} themeColor="textSecondary">
+          {hint}
+        </ThemedText>
+      </View>
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={20}
+        color={theme.textSecondary}
+        style={{ transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }] }}
+      />
+    </Pressable>
+  );
+}
+
 export function EmptyText({ children }: { children: string }) {
   return (
     <ThemedText style={styles.emptyText} themeColor="textSecondary">
@@ -338,6 +381,15 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: 500,
     fontVariant: ['tabular-nums'],
+  },
+  tool: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    padding: 12,
+    borderRadius: 15,
+    borderWidth: 1,
+    marginBottom: 10,
   },
   emptyText: {
     fontSize: 13,
