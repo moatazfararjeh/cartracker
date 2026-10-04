@@ -6,15 +6,19 @@ import { AppScreen } from '@/components/app-screen';
 import { BarLine, EmptyText, Metric, MetricRow, Note, SectionHead, ToolLink } from '@/components/blocks';
 import { ThemedText } from '@/components/themed-text';
 import { useCurrency } from '@/features/profile/api';
-import { useVehicleSummary, useYearInsights, type RecordKind } from '@/features/records/api';
+import { useVehicleSummary, useYearInsights, type YearInsights } from '@/features/records/api';
 import { currencyLabel, formatMoney, formatNumber } from '@/lib/format';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
 
-const CATEGORY_ROWS: { kind: RecordKind; labelKey: string }[] = [
-  { kind: 'maintenance', labelKey: 'insights.partsService' },
-  { kind: 'fuel', labelKey: 'insights.fuel' },
-  { kind: 'expense', labelKey: 'insights.otherExpenses' },
-];
+/** Spending rows: maintenance is split into spare parts and labor. */
+function categoryRows(data: YearInsights) {
+  return [
+    { key: 'parts', labelKey: 'insights.spareParts', value: data.byKind.maintenance - data.labor },
+    { key: 'labor', labelKey: 'insights.labor', value: data.labor },
+    { key: 'fuel', labelKey: 'insights.fuel', value: data.byKind.fuel },
+    { key: 'expense', labelKey: 'insights.otherExpenses', value: data.byKind.expense },
+  ];
+}
 
 export default function InsightsScreen() {
   const { t, i18n } = useTranslation();
@@ -54,12 +58,12 @@ export default function InsightsScreen() {
 
           <SectionHead title={t('insights.byCategory')} />
           <View style={styles.bars}>
-            {CATEGORY_ROWS.map(({ kind, labelKey }) => (
+            {categoryRows(data).map(({ key, labelKey, value }) => (
               <BarLine
-                key={kind}
+                key={key}
                 label={t(labelKey)}
-                value={formatMoney(data.byKind[kind], currency, lang)}
-                ratio={data.total > 0 ? data.byKind[kind] / data.total : 0}
+                value={formatMoney(value, currency, lang)}
+                ratio={data.total > 0 ? value / data.total : 0}
               />
             ))}
           </View>

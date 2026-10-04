@@ -82,6 +82,8 @@ export type UpcomingItem = LookupName & {
 
 export type YearInsights = {
   byKind: Record<RecordKind, number>;
+  /** Part of byKind.maintenance that was workshop labor (the rest is spare parts). */
+  labor: number;
   total: number;
   distanceKm: number;
 };
@@ -232,7 +234,7 @@ export function useYearInsights(vehicleId: string | undefined, year: number) {
     queryFn: async (): Promise<YearInsights> => {
       const from = `${year}-01-01`;
       const to = `${year + 1}-01-01`;
-      const [costs, readings] = await Promise.all([
+      const [costs, readings, labor] = await Promise.all([
         supabase
           .from('v_monthly_costs')
           .select('kind, amount')
@@ -245,9 +247,16 @@ export function useYearInsights(vehicleId: string | undefined, year: number) {
           .eq('vehicle_id', vehicleId!)
           .gte('read_at', from)
           .lt('read_at', to),
+        supabase
+          .from('maintenance_records')
+          .select('labor_cost')
+          .eq('vehicle_id', vehicleId!)
+          .gte('performed_at', from)
+          .lt('performed_at', to),
       ]);
       if (costs.error) throw costs.error;
       if (readings.error) throw readings.error;
+      if (labor.error) throw labor.error;
 
       const byKind: Record<RecordKind, number> = { maintenance: 0, fuel: 0, expense: 0 };
       for (const row of costs.data) {
@@ -258,6 +267,7 @@ export function useYearInsights(vehicleId: string | undefined, year: number) {
 
       return {
         byKind,
+        labor: labor.data.reduce((sum, r) => sum + Number(r.labor_cost ?? 0), 0),
         total: byKind.maintenance + byKind.fuel + byKind.expense,
         distanceKm,
       };
@@ -328,7 +338,10 @@ export type RecordValues = {
   vehicle_id: string;
   date: string;
   odometer: number | null;
+  /** Total for fuel / expense; the spare parts cost for maintenance. */
   amount: number;
+  /** Maintenance only: workshop labor on top of the parts. */
+  labor_cost: number | null;
   /** Workshop (maintenance) or station (fuel). */
   place: string | null;
   notes: string | null;
@@ -345,6 +358,8 @@ export type LoadedRecord = RecordValues & {
   id: string;
   /** The maintenance item edited by the form (records created in the app have one). */
   item_id: string | null;
+  /** Cost of any further parts on the same maintenance record (not edited by the form). */
+  extra_items_cost: number;
 };
 
 const ENTITY_TABLE: Record<RecordKind, string> = {
@@ -359,7 +374,8 @@ export function useRecord(kind: RecordKind, id: string | undefined) {
     enabled: !!id,
     queryFn: async (): Promise<LoadedRecord> => {
       const base = { kind, id: id!, item_id: null, category_id: null, next_due_km: null, liters: null,
-        fuel_type: null, is_full_tank: true, expense_category: null, place: null } as const;
+        fuel_type: null, is_full_tank: true, expense_category: null, place: null, labor_cost: null,
+        extra_items_cost: 0 } as const;
 
       if (kind === 'fuel') {
         const { data, error } = await supabase
@@ -386,7 +402,7 @@ export function useRecord(kind: RecordKind, id: string | undefined) {
         const { data, error } = await supabase
           .from('maintenance_records')
           .select(
-            'vehicle_id, performed_at, odometer, workshop, total_cost, notes, maintenance_items(id, category_id, next_due_km, created_at)'
+            'vehicle_id, performed_at, odometer, workshop, labor_cost, notes, maintenance_items(id, category_id, next_due_km, total_cost, created_at)'
           )
           .eq('id', id!)
           .single();
@@ -395,15 +411,18 @@ export function useRecord(kind: RecordKind, id: string | undefined) {
           id: string;
           category_id: string;
           next_due_km: number | null;
+          total_cost: number;
           created_at: string;
         }[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
-        const item = items[0];
+        const [item, ...others] = items;
         return {
           ...base,
           vehicle_id: data.vehicle_id,
           date: data.performed_at,
           odometer: data.odometer,
-          amount: Number(data.total_cost),
+          amount: Number(item?.total_cost ?? 0),
+          labor_cost: Number(data.labor_cost ?? 0),
+          extra_items_cost: others.reduce((sum, o) => sum + Number(o.total_cost), 0),
           place: data.workshop,
           notes: data.notes,
           item_id: item?.id ?? null,
@@ -466,6 +485,7 @@ async function saveMaintenance(values: RecordValues, id?: string, itemId?: strin
     performed_at: values.date,
     odometer: values.odometer!,
     workshop: values.place,
+    labor_cost: values.labor_cost ?? 0,
     notes: values.notes,
   };
   const item = {

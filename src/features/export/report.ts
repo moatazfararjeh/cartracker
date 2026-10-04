@@ -14,6 +14,8 @@ export type ExportRow = {
   date: string;
   odometer: number | null;
   amount: number;
+  /** Maintenance only: the labor part of `amount`. */
+  labor: number | null;
   liters: number | null;
   pricePerLiter: number | null;
   place: string | null;
@@ -47,7 +49,7 @@ export async function fetchExportRows(vehicleId: string, { from, to }: Period): 
     range(
       supabase
         .from('maintenance_records')
-        .select('performed_at, odometer, total_cost, workshop, notes, maintenance_items(part_categories(name_en, name_ar))')
+        .select('performed_at, odometer, total_cost, labor_cost, workshop, notes, maintenance_items(part_categories(name_en, name_ar))')
         .eq('vehicle_id', vehicleId),
       'performed_at'
     ),
@@ -63,7 +65,7 @@ export async function fetchExportRows(vehicleId: string, { from, to }: Period): 
   if (maintenance.error) throw maintenance.error;
   if (expenses.error) throw expenses.error;
 
-  const base = { liters: null, pricePerLiter: null, parts: [], expenseCategory: null };
+  const base = { liters: null, pricePerLiter: null, parts: [], expenseCategory: null, labor: null };
   const rows: ExportRow[] = [
     ...fuel.data.map((f) => ({
       ...base,
@@ -82,6 +84,7 @@ export async function fetchExportRows(vehicleId: string, { from, to }: Period): 
       date: m.performed_at,
       odometer: m.odometer,
       amount: Number(m.total_cost),
+      labor: Number(m.labor_cost ?? 0),
       place: m.workshop,
       notes: m.notes,
       parts: (m.maintenance_items as unknown as { part_categories: LookupName | null }[])
@@ -124,6 +127,7 @@ export function buildCsv(rows: ExportRow[], t: TFunction, lang: string, currency
     t('export.col.item'),
     t('export.col.odometer'),
     `${t('export.col.amount')} (${currency})`,
+    `${t('export.col.labor')} (${currency})`,
     t('export.col.liters'),
     t('export.col.pricePerLiter'),
     t('export.col.place'),
@@ -136,6 +140,7 @@ export function buildCsv(rows: ExportRow[], t: TFunction, lang: string, currency
       rowTitle(r, t, lang),
       r.odometer,
       r.amount.toFixed(2),
+      r.labor != null ? r.labor.toFixed(2) : null,
       r.liters,
       r.pricePerLiter,
       r.place,
@@ -166,6 +171,7 @@ export function buildReportHtml({ rows, vehicleName, plate, periodLabel, currenc
   const money = (v: number) => escapeHtml(formatMoney(v, currency, lang));
   const byKind: Record<RecordKind, number> = { maintenance: 0, fuel: 0, expense: 0 };
   for (const r of rows) byKind[r.kind] += r.amount;
+  const labor = rows.reduce((sum, r) => sum + (r.labor ?? 0), 0);
   const total = byKind.maintenance + byKind.fuel + byKind.expense;
 
   const withKm = rows.filter((r) => r.odometer != null);
@@ -176,7 +182,8 @@ export function buildReportHtml({ rows, vehicleName, plate, periodLabel, currenc
   const avgPrice = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : null;
 
   const categories: { label: string; value: number }[] = [
-    { label: t('insights.partsService'), value: byKind.maintenance },
+    { label: t('insights.spareParts'), value: byKind.maintenance - labor },
+    { label: t('insights.labor'), value: labor },
     { label: t('insights.fuel'), value: byKind.fuel },
     { label: t('insights.otherExpenses'), value: byKind.expense },
   ];

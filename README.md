@@ -28,7 +28,7 @@ Built with **Expo (SDK 57) + Expo Router** on a **Supabase** backend. One codeba
 ### Records
 Add a record from the Add tab or the Home quick-add buttons. Tap any record in History or Recent activity to edit it, view or remove its files, or delete it.
 
-- **Maintenance** – service or part from a catalog of 26 items (engine oil, filters, brake pads, tires, battery, …), date, odometer, cost, workshop, optional next-due km and notes.
+- **Maintenance** – service or part from a catalog of 26 items (engine oil, filters, brake pads, tires, battery, …), date, odometer, **spare parts cost and labor cost** (the total is calculated), workshop, optional next-due km and notes.
 - **Fuel** – fuel type, date, odometer, total cost and **price per liter**; liters are calculated automatically (cost ÷ price). The price is prefilled from the car's last fill-up of the same fuel type, or Aramco prices (91: 2.18, 95: 2.33, diesel: 1.66 SAR). Station and full-tank flag.
 - **Expenses** – insurance, registration, inspection, parking, fines, car wash, tolls and other, with amount, date, optional odometer and notes.
 - **Attachments** – receipt photos (gallery or camera) or PDFs on any record: up to 5 files, 10 MB each, stored privately.
@@ -47,7 +47,7 @@ Add a record from the Add tab or the Home quick-add buttons. Tap any record in H
 
 ### Insights (this year)
 - Total spend and distance driven.
-- Spending by category (parts and service, fuel, other expenses) with bars.
+- Spending by category (spare parts, labor, fuel, other expenses) with bars.
 - Average fuel economy over the last 12 months in L/100 km, calculated between full-tank fill-ups.
 
 ### Tools (from Insights)

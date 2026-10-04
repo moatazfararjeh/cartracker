@@ -32,7 +32,7 @@ import { FUEL_TYPES, type FuelType, type Vehicle } from '@/features/vehicles/api
 import { lookupName } from '@/features/vehicles/lookups';
 import { useTheme } from '@/hooks/use-theme';
 import { todayISO } from '@/lib/dates';
-import { currencyLabel, formatNumber } from '@/lib/format';
+import { currencyLabel, formatMoney, formatNumber } from '@/lib/format';
 import { parseNumber } from '@/lib/numbers';
 
 export const RECORD_KINDS: RecordKind[] = ['maintenance', 'fuel', 'expense'];
@@ -84,7 +84,9 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
   );
   const [date, setDate] = useState(record?.date ?? todayISO());
   const [odometer, setOdometer] = useState(toInput(record?.odometer));
+  // For maintenance this is the spare parts cost; labor is entered separately.
   const [cost, setCost] = useState(toInput(record?.amount));
+  const [labor, setLabor] = useState(record?.labor_cost ? toInput(record.labor_cost) : '');
   const [place, setPlace] = useState(record?.place ?? '');
   // Price per liter: typed by the user, or suggested until they change it.
   const [price, setPrice] = useState(
@@ -106,6 +108,8 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
     lastPrices.data?.[selectedFuelType] ?? DEFAULT_FUEL_PRICES[selectedFuelType] ?? null;
   const priceInput = priceTouched ? price : toInput(suggestedPrice);
   const computedLiters = litersFor(parseNumber(cost), parseNumber(priceInput));
+  const maintenanceTotal =
+    (parseNumber(cost) || 0) + (parseNumber(labor) || 0) + (record?.extra_items_cost ?? 0);
   const keptFiles = (storedFiles.data ?? []).filter((f) => !removedFiles.some((r) => r.id === f.id));
 
   const kindOptions = RECORD_KINDS.map((value) => ({ value, label: t(`records.${value}`) }));
@@ -135,6 +139,7 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
     setDate(todayISO());
     setOdometer('');
     setCost('');
+    setLabor('');
     setPlace('');
     setPrice('');
     setPriceTouched(false);
@@ -149,6 +154,7 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
     setNotice(null);
     const km = parseNumber(odometer);
     const amount = parseNumber(cost);
+    const laborValue = kind === 'maintenance' ? parseNumber(labor) : null;
     const priceValue = parseNumber(priceInput);
     const litersValue = litersFor(amount, priceValue);
     const nextDueKm = parseNumber(nextDue);
@@ -160,6 +166,7 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
       return setError(t('records.invalidOdometer'));
     }
     if (amount === null || Number.isNaN(amount)) return setError(t('records.invalidCost'));
+    if (laborValue !== null && Number.isNaN(laborValue)) return setError(t('records.invalidLabor'));
     if (kind === 'fuel' && (priceValue === null || Number.isNaN(priceValue) || priceValue <= 0)) {
       return setError(t('records.invalidPrice'));
     }
@@ -181,6 +188,7 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
           date,
           odometer: km,
           amount,
+          labor_cost: laborValue,
           place: kind === 'expense' ? null : place.trim() || null,
           notes: notes.trim() || null,
           category_id: kind === 'maintenance' ? partId : null,
@@ -275,7 +283,11 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
         <View style={styles.row}>
           <View style={styles.cell}>
             <TextField
-              label={t('records.cost', { currency: currencyLabel(currency, lang) })}
+              label={
+                kind === 'maintenance'
+                  ? t('records.partsCost', { currency: currencyLabel(currency, lang) })
+                  : t('records.cost', { currency: currencyLabel(currency, lang) })
+              }
               value={cost}
               onChangeText={setCost}
               keyboardType="decimal-pad"
@@ -296,14 +308,32 @@ export function RecordForm({ vehicle, kind, onKindChange, record, onSaved }: Rec
               />
             ) : kind === 'maintenance' ? (
               <TextField
-                label={t('records.workshop')}
-                value={place}
-                onChangeText={setPlace}
+                label={t('records.laborCost', { currency: currencyLabel(currency, lang) })}
+                value={labor}
+                onChangeText={setLabor}
+                keyboardType="decimal-pad"
                 placeholder={t('records.optional')}
               />
             ) : null}
           </View>
         </View>
+
+        {kind === 'maintenance' && (
+          <>
+            <View style={[styles.totalRow, { backgroundColor: theme.backgroundSelected }]}>
+              <ThemedText style={styles.totalLabel}>{t('records.total')}</ThemedText>
+              <ThemedText style={[styles.totalValue, { color: theme.accent }]}>
+                {formatMoney(maintenanceTotal, currency, lang)}
+              </ThemedText>
+            </View>
+            <TextField
+              label={t('records.workshop')}
+              value={place}
+              onChangeText={setPlace}
+              placeholder={t('records.optional')}
+            />
+          </>
+        )}
 
         {kind === 'fuel' && (
           <>
@@ -397,6 +427,24 @@ const styles = StyleSheet.create({
   cell: {
     flex: 1,
     minWidth: 0,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    minHeight: 40,
+    borderRadius: 10,
+  },
+  totalLabel: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  totalValue: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: 600,
+    fontVariant: ['tabular-nums'],
   },
   switchRow: {
     flexDirection: 'row',
