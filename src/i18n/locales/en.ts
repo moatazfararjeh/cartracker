@@ -258,6 +258,13 @@ export const en = {
       notes: 'Notes',
     },
   },
+  switcher: {
+    title: 'My vehicles',
+    count: 'Vehicles: {{count}}',
+    thisMonth: 'This month {{amount}}',
+    edit: 'Edit {{name}}',
+    addHint: 'Track another car in your garage',
+  },
   expenseCategories: {
     insurance: 'Insurance',
     registration: 'Registration',

@@ -191,6 +191,38 @@ export function useVehicleSummary(vehicleId: string | undefined) {
   });
 }
 
+/** Summary figures for every vehicle (vehicle switcher, comparison). */
+export type VehicleTotals = {
+  vehicle_id: string;
+  cost_this_month: number;
+  cost_this_year: number;
+  cost_last_12m: number;
+  km_last_12m: number | null;
+  avg_km_per_liter: number | null;
+};
+
+export function useAllVehicleTotals(enabled = true) {
+  return useQuery({
+    queryKey: ['vehicles', 'totals'],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('v_vehicle_summary')
+        .select('vehicle_id, cost_this_month, cost_this_year, cost_last_12m, km_last_12m, avg_km_per_liter');
+      if (error) throw error;
+      const num = (v: unknown) => (v == null ? null : Number(v));
+      return (data as Record<string, unknown>[]).map((r) => ({
+        vehicle_id: r.vehicle_id as string,
+        cost_this_month: Number(r.cost_this_month),
+        cost_this_year: Number(r.cost_this_year),
+        cost_last_12m: Number(r.cost_last_12m),
+        km_last_12m: num(r.km_last_12m),
+        avg_km_per_liter: num(r.avg_km_per_liter),
+      })) as VehicleTotals[];
+    },
+  });
+}
+
 const STATUS_RANK = { overdue: 0, soon: 1, ok: 2 } as const;
 
 /** Reminders for the vehicle, most urgent first. */
@@ -327,7 +359,7 @@ export function usePartCategories() {
 }
 
 function refreshVehicle(queryClient: QueryClient, vehicleId: string) {
-  // current_odometer changes with every record, so the vehicle list is refreshed too.
+  // current_odometer and the per-vehicle totals change with every record, so refresh those too.
   queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
   queryClient.invalidateQueries({ queryKey: vehicleData(vehicleId) });
 }

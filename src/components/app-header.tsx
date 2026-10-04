@@ -6,8 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui/button';
-import { OptionSheet } from '@/components/ui/select-field';
+import { VehicleIcon, VehicleSwitcher } from '@/components/vehicle-switcher';
 import { ScreenMaxWidth } from '@/constants/theme';
 import { useInitials } from '@/features/profile/api';
 import { vehicleSubtitle, vehicleTitle } from '@/features/vehicles/display';
@@ -19,14 +18,8 @@ export function AppHeader() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const initials = useInitials();
-  const { vehicles, activeVehicle, setActiveVehicleId } = useActiveVehicle();
+  const { activeVehicle } = useActiveVehicle();
   const [switcherOpen, setSwitcherOpen] = useState(false);
-
-  const options = vehicles.map((v) => ({
-    value: v.id,
-    label: vehicleTitle(v, i18n.language),
-    description: vehicleSubtitle(v, t, i18n.language),
-  }));
 
   return (
     <View style={[styles.header, { backgroundColor: theme.header, paddingTop: insets.top + 25 }]}>
@@ -59,9 +52,7 @@ export function AppHeader() {
                 opacity: pressed ? 0.85 : 1,
               },
             ]}>
-            <View style={[styles.carIcon, { backgroundColor: theme.iconBackground }]}>
-              <MaterialCommunityIcons name="car-outline" size={20} color={theme.accent} />
-            </View>
+            <VehicleIcon vehicle={activeVehicle} />
             <View style={styles.vehicleMain}>
               <ThemedText numberOfLines={1} style={styles.vehicleName}>
                 {vehicleTitle(activeVehicle, i18n.language)}
@@ -75,24 +66,7 @@ export function AppHeader() {
         )}
       </View>
 
-      <OptionSheet
-        visible={switcherOpen}
-        title={t('header.switchVehicle')}
-        options={options}
-        value={activeVehicle?.id ?? null}
-        onSelect={setActiveVehicleId}
-        onClose={() => setSwitcherOpen(false)}
-        footer={
-          <Button
-            title={t('vehicles.add')}
-            variant="secondary"
-            onPress={() => {
-              setSwitcherOpen(false);
-              router.push('/vehicles/new');
-            }}
-          />
-        }
-      />
+      <VehicleSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </View>
   );
 }
@@ -147,13 +121,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  carIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   vehicleMain: {
     flex: 1,

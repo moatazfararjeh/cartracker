@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
@@ -6,19 +5,13 @@ import { EmptyText, SectionHead } from '@/components/blocks';
 import { FormScreen } from '@/components/form-screen';
 import { ThemedText } from '@/components/themed-text';
 import { useCurrency } from '@/features/profile/api';
+import { useAllVehicleTotals, type VehicleTotals } from '@/features/records/api';
 import { vehicleTitle } from '@/features/vehicles/display';
 import { useTheme } from '@/hooks/use-theme';
 import { currencyLabel, formatNumber } from '@/lib/format';
-import { supabase } from '@/lib/supabase';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
 
-type Summary = {
-  vehicle_id: string;
-  cost_this_year: number;
-  cost_last_12m: number;
-  km_last_12m: number | null;
-  avg_km_per_liter: number | null;
-};
+type Summary = VehicleTotals;
 
 type MetricDef = {
   key: string;
@@ -38,23 +31,7 @@ export default function CompareScreen() {
   const cur = currencyLabel(currency, lang);
   const { vehicles } = useActiveVehicle();
 
-  const summaries = useQuery({
-    queryKey: ['vehicles', 'compare'],
-    enabled: vehicles.length > 1,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('v_vehicle_summary')
-        .select('vehicle_id, cost_this_year, cost_last_12m, km_last_12m, avg_km_per_liter');
-      if (error) throw error;
-      return (data as Record<string, unknown>[]).map((r) => ({
-        vehicle_id: r.vehicle_id as string,
-        cost_this_year: Number(r.cost_this_year),
-        cost_last_12m: Number(r.cost_last_12m),
-        km_last_12m: r.km_last_12m == null ? null : Number(r.km_last_12m),
-        avg_km_per_liter: r.avg_km_per_liter == null ? null : Number(r.avg_km_per_liter),
-      })) as Summary[];
-    },
-  });
+  const summaries = useAllVehicleTotals(vehicles.length > 1);
 
   if (vehicles.length < 2) {
     return (

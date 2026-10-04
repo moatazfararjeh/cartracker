@@ -260,6 +260,13 @@ export const ar: Translations = {
       notes: 'ملاحظات',
     },
   },
+  switcher: {
+    title: 'سياراتي',
+    count: 'عدد السيارات: {{count}}',
+    thisMonth: 'هذا الشهر {{amount}}',
+    edit: 'تعديل {{name}}',
+    addHint: 'تابع سيارة أخرى في مرآبك',
+  },
   expenseCategories: {
     insurance: 'تأمين',
     registration: 'تجديد الاستمارة',
