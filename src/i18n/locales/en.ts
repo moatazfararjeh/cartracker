@@ -22,6 +22,7 @@ export const en = {
     noAccount: "Don't have an account? Create one",
     checkEmail: 'Account created. Check your email to confirm it, then sign in.',
     missingFields: 'Enter your email and password.',
+    networkError: "Couldn't reach the Car Care server. Check your internet connection and try again.",
     signOut: 'Sign out',
   },
   tabs: {

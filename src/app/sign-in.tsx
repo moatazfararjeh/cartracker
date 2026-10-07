@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -12,6 +13,14 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 type Mode = 'signIn' | 'signUp';
+
+/** Readable message for auth errors; connection failures get a plain-language hint. */
+function authErrorMessage(error: { name?: string; message: string; status?: number }, t: TFunction) {
+  const network =
+    error.name === 'AuthRetryableFetchError' ||
+    /fetch failed|network request failed|tls|secure connection|timed out/i.test(error.message);
+  return network ? t('auth.networkError') : error.message;
+}
 
 export default function SignInScreen() {
   const { t } = useTranslation();
@@ -43,7 +52,7 @@ export default function SignInScreen() {
         options: { data: { full_name: fullName.trim() || null } },
       });
       if (signUpError) {
-        setError(signUpError.message);
+        setError(authErrorMessage(signUpError, t));
       } else if (!data.session) {
         // Email confirmation is required before the first sign-in.
         setNotice(t('auth.checkEmail'));
@@ -54,7 +63,7 @@ export default function SignInScreen() {
         email: trimmedEmail,
         password,
       });
-      if (signInError) setError(signInError.message);
+      if (signInError) setError(authErrorMessage(signInError, t));
     }
 
     setLoading(false);
