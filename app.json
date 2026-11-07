@@ -2,14 +2,14 @@
   "expo": {
     "name": "Car Care",
     "slug": "car-tracker",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "cartracker",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.ardalsharq.carcare",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "icon": "./assets/images/icon.png"
     },
     "android": {
