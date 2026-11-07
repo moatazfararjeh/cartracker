@@ -83,6 +83,30 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <ThemedText style={[styles.heading, { color: theme.eyebrow }]}>
+            {t('settings.maintenance')}
+          </ThemedText>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/service-intervals')}
+            style={({ pressed }) => [
+              styles.card,
+              {
+                backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
+                borderColor: theme.border,
+              },
+            ]}>
+            <View style={styles.cardMain}>
+              <ThemedText style={styles.cardTitle}>{t('intervals.title')}</ThemedText>
+              <ThemedText style={styles.cardSub} themeColor="textSecondary">
+                {t('intervals.hint')}
+              </ThemedText>
+            </View>
+            <ThemedText style={{ color: theme.accent }}>{isArabic ? '‹' : '›'}</ThemedText>
+          </Pressable>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={[styles.heading, { color: theme.eyebrow }]}>
             {t('settings.language')}
           </ThemedText>
           <LanguageSwitch />

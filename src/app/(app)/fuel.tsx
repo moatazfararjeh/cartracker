@@ -1,4 +1,5 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
@@ -6,12 +7,14 @@ import { BarChart } from '@/components/bar-chart';
 import { EmptyText, Metric, MetricRow, Note, SectionHead } from '@/components/blocks';
 import { FormScreen } from '@/components/form-screen';
 import { ThemedText } from '@/components/themed-text';
+import { ChipSelect } from '@/components/ui/chip-select';
 import { useCurrency } from '@/features/profile/api';
 import { CONSUMPTION_WARNING, useFuelAnalysis } from '@/features/fuel/api';
 import { vehicleTitle } from '@/features/vehicles/display';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDate } from '@/lib/dates';
 import { currencyLabel, formatMoney, formatNumber } from '@/lib/format';
+import { PERIOD_KEYS, periodRange, type PeriodKey } from '@/lib/periods';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
 
 /** Bars shown per chart (most recent fill-ups). */
@@ -23,7 +26,8 @@ export default function FuelAnalysisScreen() {
   const theme = useTheme();
   const currency = useCurrency();
   const { activeVehicle } = useActiveVehicle();
-  const analysis = useFuelAnalysis(activeVehicle?.id);
+  const [periodKey, setPeriodKey] = useState<PeriodKey>('last12Months');
+  const analysis = useFuelAnalysis(activeVehicle?.id, periodRange(periodKey).range);
   const a = analysis.data;
   const cur = currencyLabel(currency, lang);
 
@@ -59,14 +63,33 @@ export default function FuelAnalysisScreen() {
       }),
     }));
 
-  const rising = a?.latestChange != null && a.latestChange >= CONSUMPTION_WARNING;
+  const rangeBars = (a?.ranges ?? []).slice(-CHART_FILLS).map((r) => ({
+    key: r.fill.id,
+    value: r.km,
+    label: formatDate(r.fill.filled_at, lang),
+    caption: t('fuel.rangeCaption', {
+      from: formatDate(r.fill.filled_at, lang, true),
+      to: formatDate(r.until, lang, true),
+      km: formatNumber(r.km, lang),
+      liters: formatNumber(r.fill.liters, lang, 1),
+    }),
+  }));
+
+  const rising =a?.latestChange != null && a.latestChange >= CONSUMPTION_WARNING;
   const cheapest = a?.stations.find((s) => s.avgPrice != null);
 
   return (
     <FormScreen>
       <ThemedText style={styles.vehicle} themeColor="textSecondary">
-        {vehicleTitle(activeVehicle, lang)} · {t('fuel.period')}
+        {vehicleTitle(activeVehicle, lang)}
       </ThemedText>
+      <View style={styles.periods}>
+        <ChipSelect
+          options={PERIOD_KEYS.map((value) => ({ value, label: t(`periods.${value}`) }))}
+          value={periodKey}
+          onChange={setPeriodKey}
+        />
+      </View>
 
       {analysis.isPending ? (
         <ActivityIndicator />
@@ -114,8 +137,37 @@ export default function FuelAnalysisScreen() {
               unit={t('fuel.literUnit')}
             />
           </MetricRow>
+          <MetricRow>
+            <Metric
+              label={t('fuel.lastRange')}
+              value={a.lastRangeKm != null ? formatNumber(a.lastRangeKm, lang) : '—'}
+              unit={t('vehicles.kmUnit')}
+            />
+            <Metric
+              label={t('fuel.avgRange')}
+              value={a.avgRangeKm != null ? formatNumber(a.avgRangeKm, lang) : '—'}
+              unit={t('vehicles.kmUnit')}
+            />
+          </MetricRow>
 
-          <SectionHead title={t('fuel.economyChart')} aside={t('fuel.tapHint')} />
+          <SectionHead title={t('fuel.rangeChart')} aside={t('fuel.tapHint')} />
+          {rangeBars.length > 0 ? (
+            <View style={[styles.chartCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+              <BarChart
+                data={rangeBars}
+                reference={
+                  a.avgRangeKm != null
+                    ? { value: a.avgRangeKm, label: t('fuel.average', { value: formatNumber(a.avgRangeKm, lang) }) }
+                    : undefined
+                }
+                accessibilityLabel={t('fuel.rangeChart')}
+              />
+            </View>
+          ) : (
+            <Note>{t('fuel.rangeHint')}</Note>
+          )}
+
+          <SectionHead title={t('fuel.economyChart')} />
           {economyBars.length > 0 ? (
             <View style={[styles.chartCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
               <BarChart
@@ -193,6 +245,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 6,
+  },
+  periods: {
+    marginBottom: 16,
   },
   alert: {
     flexDirection: 'row',

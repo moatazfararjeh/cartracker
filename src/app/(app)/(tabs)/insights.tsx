@@ -1,17 +1,20 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AppScreen } from '@/components/app-screen';
 import { BarLine, EmptyText, Metric, MetricRow, Note, SectionHead, ToolLink } from '@/components/blocks';
 import { ThemedText } from '@/components/themed-text';
+import { ChipSelect } from '@/components/ui/chip-select';
 import { useCurrency } from '@/features/profile/api';
-import { useVehicleSummary, useYearInsights, type YearInsights } from '@/features/records/api';
+import { useInsights, useVehicleSummary, type PeriodInsights } from '@/features/records/api';
 import { currencyLabel, formatMoney, formatNumber } from '@/lib/format';
+import { PERIOD_KEYS, periodRange, type PeriodKey } from '@/lib/periods';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
 
 /** Spending rows: maintenance is split into spare parts and labor. */
-function categoryRows(data: YearInsights) {
+function categoryRows(data: PeriodInsights) {
   return [
     { key: 'parts', labelKey: 'insights.spareParts', value: data.byKind.maintenance - data.labor },
     { key: 'labor', labelKey: 'insights.labor', value: data.labor },
@@ -25,8 +28,8 @@ export default function InsightsScreen() {
   const lang = i18n.language;
   const { activeVehicle } = useActiveVehicle();
   const currency = useCurrency();
-  const year = new Date().getFullYear();
-  const insights = useYearInsights(activeVehicle?.id, year);
+  const [periodKey, setPeriodKey] = useState<PeriodKey>('thisYear');
+  const insights = useInsights(activeVehicle?.id, periodRange(periodKey).range);
   const summary = useVehicleSummary(activeVehicle?.id);
 
   const data = insights.data;
@@ -34,7 +37,16 @@ export default function InsightsScreen() {
 
   return (
     <AppScreen refreshing={insights.isRefetching} onRefresh={insights.refetch}>
-      <SectionHead title={t('insights.title')} aside={t('insights.yearSoFar', { year })} />
+      <SectionHead title={t('insights.title')} />
+      {activeVehicle && (
+        <View style={styles.periods}>
+          <ChipSelect
+            options={PERIOD_KEYS.map((value) => ({ value, label: t(`periods.${value}`) }))}
+            value={periodKey}
+            onChange={setPeriodKey}
+          />
+        </View>
+      )}
       {!activeVehicle ? (
         <EmptyText>{t('records.needVehicle')}</EmptyText>
       ) : insights.isPending ? (
@@ -104,6 +116,9 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
+  periods: {
+    marginBottom: 16,
+  },
   bars: {
     marginTop: -11,
     marginBottom: 8,

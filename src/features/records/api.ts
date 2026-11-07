@@ -10,6 +10,7 @@ import {
   type StoredAttachment,
 } from '@/features/records/attachments';
 import { vehicleKeys, type FuelType } from '@/features/vehicles/api';
+import { inPeriod, type Period } from '@/lib/periods';
 import { supabase } from '@/lib/supabase';
 
 export const EXPENSE_CATEGORIES = [
@@ -80,7 +81,7 @@ export type UpcomingItem = LookupName & {
   status: 'overdue' | 'soon' | 'ok';
 };
 
-export type YearInsights = {
+export type PeriodInsights = {
   byKind: Record<RecordKind, number>;
   /** Part of byKind.maintenance that was workshop labor (the rest is spare parts). */
   labor: number;
@@ -95,8 +96,8 @@ export const recordKeys = {
   activity: (vehicleId: string | undefined) => [...vehicleData(vehicleId), 'activity'] as const,
   summary: (vehicleId: string | undefined) => [...vehicleData(vehicleId), 'summary'] as const,
   upcoming: (vehicleId: string | undefined) => [...vehicleData(vehicleId), 'upcoming'] as const,
-  insights: (vehicleId: string | undefined, year: number) =>
-    [...vehicleData(vehicleId), 'insights', year] as const,
+  insights: (vehicleId: string | undefined, period: Period) =>
+    [...vehicleData(vehicleId), 'insights', period.from, period.to] as const,
 };
 
 const ACTIVITY_LIMIT = 100;
@@ -259,32 +260,23 @@ export function useDismissReminder() {
   });
 }
 
-export function useYearInsights(vehicleId: string | undefined, year: number) {
+export function useInsights(vehicleId: string | undefined, period: Period) {
   return useQuery({
-    queryKey: recordKeys.insights(vehicleId, year),
+    queryKey: recordKeys.insights(vehicleId, period),
     enabled: !!vehicleId,
-    queryFn: async (): Promise<YearInsights> => {
-      const from = `${year}-01-01`;
-      const to = `${year + 1}-01-01`;
+    queryFn: async (): Promise<PeriodInsights> => {
       const [costs, readings, labor] = await Promise.all([
-        supabase
-          .from('v_monthly_costs')
-          .select('kind, amount')
-          .eq('vehicle_id', vehicleId!)
-          .gte('month', from)
-          .lt('month', to),
-        supabase
-          .from('odometer_readings')
-          .select('reading')
-          .eq('vehicle_id', vehicleId!)
-          .gte('read_at', from)
-          .lt('read_at', to),
-        supabase
-          .from('maintenance_records')
-          .select('labor_cost')
-          .eq('vehicle_id', vehicleId!)
-          .gte('performed_at', from)
-          .lt('performed_at', to),
+        inPeriod(supabase.from('v_monthly_costs').select('kind, amount').eq('vehicle_id', vehicleId!), 'month', period),
+        inPeriod(
+          supabase.from('odometer_readings').select('reading').eq('vehicle_id', vehicleId!),
+          'read_at',
+          period
+        ),
+        inPeriod(
+          supabase.from('maintenance_records').select('labor_cost').eq('vehicle_id', vehicleId!),
+          'performed_at',
+          period
+        ),
       ]);
       if (costs.error) throw costs.error;
       if (readings.error) throw readings.error;

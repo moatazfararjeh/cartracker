@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { FuelType } from '@/features/vehicles/api';
+import { inPeriod, type Period } from '@/lib/periods';
 import { supabase } from '@/lib/supabase';
 
 /** One fill-up with the distance / economy the database works out between full tanks. */
@@ -39,11 +40,22 @@ export type FuelAnalysis = {
   totalCost: number;
   fuelCostPerKm: number | null;
   stations: StationStats[];
+  /** How far each fill-up lasted (km to the next fill-up), oldest first. */
+  ranges: FuelRange[];
+  lastRangeKm: number | null;
+  avgRangeKm: number | null;
+};
+
+/** The distance driven on one fill-up, up to the next one. */
+export type FuelRange = {
+  fill: FuelFill;
+  km: number;
+  /** Date of the next fill-up, where this range ends. */
+  until: string;
 };
 
 /** A fill-up this much above the average consumption raises a warning. */
 export const CONSUMPTION_WARNING = 0.15;
-const MONTHS = 12;
 
 const mean = (values: number[]) =>
   values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
@@ -80,7 +92,19 @@ export function analyzeFuel(fills: FuelFill[]): FuelAnalysis {
     }))
     .sort((a, b) => (a.avgPrice ?? Infinity) - (b.avgPrice ?? Infinity));
 
+  const ranges: FuelRange[] = [];
+  for (let i = 0; i < oldestFirst.length - 1; i++) {
+    const fill = oldestFirst[i]!;
+    const next = oldestFirst[i + 1]!;
+    const km = next.odometer - fill.odometer;
+    if (km > 0) ranges.push({ fill, km, until: next.filled_at });
+  }
+  const rangeKms = ranges.map((r) => r.km);
+
   return {
+    ranges,
+    lastRangeKm: rangeKms.at(-1) ?? null,
+    avgRangeKm: mean(rangeKms),
     fills: oldestFirst,
     economyFills,
     avgPer100,
@@ -95,22 +119,22 @@ export function analyzeFuel(fills: FuelFill[]): FuelAnalysis {
   };
 }
 
-/** Fill-ups of the last 12 months with economy figures, analysed. */
-export function useFuelAnalysis(vehicleId: string | undefined) {
+/** Fill-ups in a period with economy figures, analysed. */
+export function useFuelAnalysis(vehicleId: string | undefined, period: Period) {
   return useQuery({
-    queryKey: ['vehicle-data', vehicleId, 'fuel-analysis'],
+    queryKey: ['vehicle-data', vehicleId, 'fuel-analysis', period.from, period.to],
     enabled: !!vehicleId,
     queryFn: async () => {
-      const since = new Date();
-      since.setMonth(since.getMonth() - MONTHS);
-      const { data, error } = await supabase
-        .from('v_fuel_stats')
-        .select(
-          'id, filled_at, odometer, liters, total_cost, price_per_liter, station, fuel_type, is_full_tank, distance_km, liters_per_100km'
-        )
-        .eq('vehicle_id', vehicleId!)
-        .gte('filled_at', since.toISOString().slice(0, 10))
-        .order('filled_at');
+      const { data, error } = await inPeriod(
+        supabase
+          .from('v_fuel_stats')
+          .select(
+            'id, filled_at, odometer, liters, total_cost, price_per_liter, station, fuel_type, is_full_tank, distance_km, liters_per_100km'
+          )
+          .eq('vehicle_id', vehicleId!),
+        'filled_at',
+        period
+      ).order('filled_at');
       if (error) throw error;
       const fills = (data as Record<string, unknown>[]).map(
         (row) =>

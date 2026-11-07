@@ -4,6 +4,7 @@ import type { ExpenseCategory, RecordKind } from '@/features/records/api';
 import { lookupName } from '@/features/vehicles/lookups';
 import { formatDate } from '@/lib/dates';
 import { currencyLabel, formatMoney, formatNumber } from '@/lib/format';
+import { inPeriod, type Period } from '@/lib/periods';
 import { supabase } from '@/lib/supabase';
 
 type LookupName = { name_en: string; name_ar: string | null };
@@ -24,19 +25,14 @@ export type ExportRow = {
   expenseCategory: ExpenseCategory | null;
 };
 
-export type Period = { from: string | null; to: string | null };
+export type { Period };
 
 /** All records of a vehicle in [from, to), oldest first. */
-export async function fetchExportRows(vehicleId: string, { from, to }: Period): Promise<ExportRow[]> {
+export async function fetchExportRows(vehicleId: string, period: Period): Promise<ExportRow[]> {
   const range = <Q extends { gte: (c: string, v: string) => Q; lt: (c: string, v: string) => Q }>(
     query: Q,
     column: string
-  ) => {
-    let q = query;
-    if (from) q = q.gte(column, from);
-    if (to) q = q.lt(column, to);
-    return q;
-  };
+  ) => inPeriod(query, column, period);
 
   const [fuel, maintenance, expenses] = await Promise.all([
     range(

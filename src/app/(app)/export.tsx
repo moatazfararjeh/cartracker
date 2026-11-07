@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { addMonths, addYears, format, startOfMonth, startOfYear } from 'date-fns';
+import { format } from 'date-fns';
 import { arSA, enUS } from 'date-fns/locale';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,34 +11,16 @@ import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { ChipSelect } from '@/components/ui/chip-select';
 import { FieldLabel } from '@/components/ui/field-label';
-import { buildCsv, buildReportHtml, fetchExportRows, type Period } from '@/features/export/report';
+import { buildCsv, buildReportHtml, fetchExportRows } from '@/features/export/report';
 import { useCurrency } from '@/features/profile/api';
 import { vehicleTitle } from '@/features/vehicles/display';
 import { useTheme } from '@/hooks/use-theme';
 import { toISODate } from '@/lib/dates';
+import { periodRange, type PeriodKey } from '@/lib/periods';
 import { shareCsv, sharePdf } from '@/lib/share-file';
 import { useActiveVehicle } from '@/providers/active-vehicle-provider';
 
-const PERIODS = ['thisMonth', 'lastMonth', 'thisYear', 'lastYear', 'all'] as const;
-type PeriodKey = (typeof PERIODS)[number];
-
-function periodRange(key: PeriodKey, now = new Date()): { range: Period; start: Date | null } {
-  const month = startOfMonth(now);
-  const year = startOfYear(now);
-  const make = (from: Date, to: Date) => ({ range: { from: toISODate(from), to: toISODate(to) }, start: from });
-  switch (key) {
-    case 'thisMonth':
-      return make(month, addMonths(month, 1));
-    case 'lastMonth':
-      return make(addMonths(month, -1), month);
-    case 'thisYear':
-      return make(year, addYears(year, 1));
-    case 'lastYear':
-      return make(addYears(year, -1), year);
-    default:
-      return { range: { from: null, to: null }, start: null };
-  }
-}
+const PERIODS = ['thisMonth', 'lastMonth', 'thisYear', 'lastYear', 'all'] as const satisfies readonly PeriodKey[];
 
 export default function ExportScreen() {
   const { t, i18n } = useTranslation();
@@ -111,7 +93,7 @@ export default function ExportScreen() {
       <View>
         <FieldLabel>{t('export.period')}</FieldLabel>
         <ChipSelect
-          options={PERIODS.map((value) => ({ value, label: t(`export.periods.${value}`) }))}
+          options={PERIODS.map((value) => ({ value, label: t(`periods.${value}`) }))}
           value={periodKey}
           onChange={setPeriodKey}
         />

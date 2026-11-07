@@ -31,6 +31,7 @@ export default function AppLayout() {
         <Stack.Screen name="fuel" options={{ title: t('fuel.title') }} />
         <Stack.Screen name="export" options={{ title: t('export.title') }} />
         <Stack.Screen name="compare" options={{ title: t('compare.title') }} />
+        <Stack.Screen name="service-intervals" options={{ title: t('intervals.title') }} />
       </Stack>
     </ActiveVehicleProvider>
   );
